@@ -1,0 +1,32 @@
+#!/usr/bin/env python
+
+from brian import *
+
+
+tau_m = 10*ms
+sigma = 1*volt
+mu = 0*mV
+x_th = 15000*mV
+t_refr = 2*ms
+v_reset = 0*mV
+OUeq = Equations('''dx/dt=-x/tau_m + sigma*xi/(second**.5) : volt''')
+group = NeuronGroup(1, OUeq, threshold=x_th, refractory=t_refr, reset=v_reset)
+group.rest()
+
+mem = StateMonitor(group, 'x', record=True)
+st = SpikeMonitor(group)
+run(5000*ms)
+
+print "Spikes:",st.nspikes
+print "mean(mem[0]):",mean(mem[0])
+print "std(mem[0]):",std(mem[0])
+
+subplot(211)
+plot(mem.times,mem[0])#,mem.times,ones(len(mem.times))*x_th)
+title('Membrane')
+
+cv = std(st[0])/mean(st[0])
+print "CV:",cv
+
+show()
+

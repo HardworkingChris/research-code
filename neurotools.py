@@ -1,0 +1,726 @@
+from pickle import load
+import os
+from sys import stderr
+from numpy import array, diff, floor, zeros, log, mean, std,\
+        random, cumsum, histogram, where
+from brian.units import second, volt
+from warnings import warn
+
+
+class SynchronousInputGroup:
+    '''
+    Synchronous input generator.
+    This class is a generator that generates spike trains where:
+    - N*sync spike trains are synchronous,
+    - N*(1-sync) spike trains are independent Poisson realisations,
+    - the spikes in the n*s synchronous spike trains are shifted by
+    Gaussian jitter with standard deviation = `sigma`.
+
+    Constructor Parameters
+    ----------
+    N : int
+        Number of spike trains
+
+    rate : brian Hz (frequency)
+        Spike rate for each spike train (units: freq)
+
+    sync : float
+        Proportion of synchronous spike trains [0,1]
+
+    jitter : brian second (time)
+        Standard deviation of Gaussian random variable which is used to shift
+        each spike in a synchronous spike train (units: time)
+
+    dt : brian second (time)
+        Simulation time step (default 0.1 ms)
+    '''
+
+    def __init__(self, N, rate, synchrony, jitter, dt=0.0001*second):
+        self.N = N
+        self.rate = rate
+        self.sync = synchrony
+        self.jitter = jitter
+        self._dt = dt
+        self._gen = self.configure_generators(self.N, self.rate, self.sync,\
+                self.jitter, self._dt)
+
+    def __call__(self):
+        return self._gen
+
+
+    def configure_generators(self, n, rate, sync, jitter, dt=0.0001*second):
+        '''
+        Synchronous input generator. This function is called by the parent
+        class constructor. See the parent class' doc string for details.
+
+        Parameters
+        ----------
+        n : int
+            Number of spike trains
+
+        rate : brian Hz (frequency)
+            Spike rate for each spike train (units: freq)
+
+        sync : float
+            Proportion of synchronous spike trains [0,1]
+
+        jitter : brian second (time)
+            Standard deviation of Gaussian random variable which is used to 
+            shift each spike in a synchronous spike train (units: time) 
+
+        dt : brian second (time)
+            Simulation time step (default 0.1 ms)
+
+        Returns
+        -------
+        A list of generators with the specific temporal characeteristics
+        (see parent constructor for details)
+
+        '''
+        if not(0 <= sync <= 1):
+            warn("Synchrony should be between 0 and 1. Setting to 0")
+            sync = 0
+        
+        spiketrains = []
+        n_ident = int(floor(n*sync))   # number of identical spike trains
+        st_ident = self.sync_inp_gen(n_ident, rate, jitter, dt)
+        for i in range(n_ident):
+            spiketrains.append(st_ident)
+
+        for i in range(n_ident,n):
+            spiketrains.append(self.sync_inp_gen(1, rate, 0*second, dt))
+
+        return spiketrains
+
+
+    def sync_inp_gen(self, n, rate, jitter, dt=0.0001*second):
+        '''
+        The synchronous input generator.
+        This generator returns the same value (plus a random variate) n times
+        before returning a new spike time. This can be used to generate
+        n spike trains with the same base spike times, but with jitter applied
+        to each spike.
+        The n spike trains generated are equivalent to having a series of 
+        Gaussian pulse packets centred on each base time (t) with 
+        spread = jitter.
+
+        Parameters
+        ----------
+        n : int
+            Number of synchronous inputs. This defines the number of times
+            the same base time (t) will used by the generator.
+        
+        rate : brian hertz (frequency)
+            The average spike rate
+
+        jitter : brian second (time)
+            The jitter applied to each t
+
+        dt : biran second (time)
+            Simulation time step (default 0.1 ms)
+        '''
+
+        t = 0*second
+        prev_t = t 
+        iter = n
+        while(True):
+            if iter == n:
+                interval = random.exponential(1./rate)*second
+                if interval < dt: # prevents spike stacking
+                    interval = dt
+                prev_t = t
+                t += interval
+                iter = 1
+            else:
+                iter += 1
+            if (jitter > 0*second):
+                jitt_variate = random.normal(0, jitter)*second
+                if (t + jitt_variate) < (prev_t + dt):
+                    # limits stacking warnings but has similar effect
+                    jitt_variate = prev_t + dt - t
+            else:
+                jitt_variate = 0*second
+            yield t + jitt_variate
+
+
+def loadsim(simname):
+    '''
+    Takes a simulation name and loads the data associated with the simulation.
+    Searches current directory for:
+        "simname.mem" (membrane potential data)
+        "simname.out" (output spike trains)
+        "simname.stm" (input spike trains)
+
+    If any of the above is not found, the function returns an empty list
+    for the respective variable.
+
+    Parameters
+    ----------
+    simname : string
+        The name of the file containing the simulation data
+        (excluding extensions)
+    
+    Returns
+    -------
+    mem, out, stm : numpy arrays
+        Simulation data
+
+    '''
+    
+    memname = simname+".mem"
+    if (os.path.exists(memname)):
+        mem = load(open(memname,"rb"))
+    else:
+        mem = array([])
+
+    outname = simname+".out"
+    if (os.path.exists(outname)):
+        out = load(open(outname,"rb"))
+    else:
+        out = array([])
+
+    stmname = simname+".stm"
+    if (os.path.exists(stmname)):
+        stm = load(open(stmname,"rb"))
+    else:
+        stm = array([])
+    
+    if ((not mem.size) and (not out.size) and (not stm.size)):
+        warn("No simulation data exists with name `%s` \n" % simname)
+    
+    return mem, out, stm
+
+
+def slope_distribution(v,w,rem_zero=True):
+    '''
+    Calculates the distribution of membrane potential slope values.
+    
+    Parameters
+    ----------
+    v : numpy array
+        Membrane potential values as taken from brian.StateMonitor
+    w : float or brian voltage
+        Precision of distribution. Slope values are grouped based on the size
+        of w and considered equal.
+    rem_zero : bool, optional
+        If True, the function ignores slope values equal to zero,
+        which are caused by refractoriness and are of little interest.
+        
+    Returns
+    -------
+    dist : array
+        The values of the distribution. See numpy.histogram for more
+        information on the shape of the return array.
+        
+    See Also
+    --------
+    histogram
+    '''
+
+    dv = diff(v)
+    if (rem_zero):
+        dv = dv[dv != 0]
+        
+    nbins = (max(dv)-min(dv))/w
+    nbins = int(nbins)
+    dist = histogram(dv,nbins)
+    return dist
+    
+
+def positive_slope_distribution(v,w):
+    '''
+    Calculates the distribution of positive membrane potential slope values.
+    
+    Parameters
+    ----------
+    v : numpy array
+        Membrane potential values as taken from brian.StateMonitor
+    w : float or brian voltage
+        Precision of distribution. Slope values are grouped based on the size
+        of w and considered equal.
+
+    Return
+    -------
+    dist : array
+        The values of the distribution. See numpy.histogram for more
+        information on the shape of the return array.
+        
+    See Also
+    --------
+    numpy.histogram
+    '''
+
+    dv = diff(v)
+    dv = dv[dv > 0]
+    nbins = (max(dv)-min(dv))/w
+    nbins = int(nbins)
+    dist = histogram(dv,nbins)
+    return dist
+    
+
+def npss(v, out, v_th, w, dt=0.0001*second):
+    '''
+    Calculates the normalised pre-spike membrane potential slope.
+
+    Parameters
+    ----------
+    v : numpy array 
+        Membrane potential values as taken from brian.StateMonitor
+    out : numpy array
+        Spike train of the membrane potential data in 'v'
+        as taken from brian.SpikeMonitor
+    v_th : brian voltage
+        Neuron spike threshold
+    w : brian second (time)
+        Pre-spike window used to calculate spike triggered average
+        and subsequently slope values
+    dt : brian second (time)
+        The simulation time step
+
+    Returns
+    -------
+    m_slope : float
+        The mean npss of the simulation
+    slopes : list of float
+        The individual npss values for each spike
+
+    '''
+    if (out.size <= 1):
+        return 0,[0]
+    
+    (m,s,wins) = sta(v, out, w, dt)
+    wins[:,-1] = v_th
+    # remove first window
+    wins = wins[1:,:]
+   
+    w_d = w/dt-1
+    th_d = v_th/volt
+
+    slopes = mean(diff(wins,axis=1),1)
+
+    firstspiketime_d = int(out[0]*second/dt)
+    v_reset = v[firstspiketime_d+1]
+    isis = diff(out)/dt
+
+    # lower bound calculation
+    low_bound = (th_d-v_reset)/isis
+
+    # upper bound calculation
+    high_bound = (th_d-v_reset)/w_d
+    slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
+    slopes_norm[slopes_norm < 0] = 0
+    
+    overmax = (slopes_norm > 1).nonzero()
+        
+    mean_slope = mean(slopes_norm)
+    return mean_slope, slopes_norm
+  
+
+def npss_ar(v, out, v_th, tau_m, w):
+    '''
+    BROKEN!!!
+    '''
+    warn("BROKEN! FIX ME!")
+    return 0,[0]
+    if (out.size <= 1):
+        return 0,[0]
+    
+
+    (m,s,wins) = sta(v, out, w)
+    wins[:,-1] = v_th
+    # remove first window
+    wins = wins[1:,:]
+    slopes = mean(diff(wins,axis=1),1)
+    spiketime_d = int(out[0]*second/(0.0001*second))
+    v_reset = v[spiketime_d+1]*mV
+    print "reset: ",v_reset
+    isis = diff(out)
+    isis = isis*second/(0.0001*second)
+    # lower bound calculation
+    low_bound = (v_th-v_reset)/isis
+    print low_bound[2],"= (",v_th,"-",v_reset,")/",isis[2]
+    # upper bound calculation
+    t_decay = isis-w*second/(0.0001*second)
+    t_decay = array(t_decay,dtype=int)
+    t_decay_max = max(t_decay)
+    decay_max = v_reset*\
+            exp(-(array(range(t_decay_max))/(tau_m/(0.0001*second))))
+    high_start = decay_max[t_decay-1]
+    high_bound = (v_th/volt-high_start)/(w/(0.0001*second))
+    
+    slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
+    slopes_norm[slopes_norm < 0] = 0
+    
+    overmax = (slopes_norm > 1).nonzero()
+    '''
+    if (size(overmax) > 0):
+        print "Normalised slope exceeds 1 in",size(overmax),"cases:"
+        print "H bound:",high_bound[overmax]
+        print "L bound:",low_bound[overmax]
+        print "Slopes :",slopes[overmax]
+        print "Norm sl:",slopes_norm[overmax]
+        print "ISIs   :",isis[overmax]
+    '''     
+    mean_slope = mean(slopes_norm)
+    return mean_slope,slopes_norm
+ 
+
+def sta(v, out, w, dt=0.0001*second):
+    '''
+    Calculates the Spike Triggered Average (currently only membrane potential)
+    of the supplied data. Single neuron data only.
+
+    Parameters
+    ----------
+    v : numpy array 
+        Membrane potential values as taken from brian.StateMonitor
+    out : numpy array
+        Spike train of the membrane potential data in 'v' as taken
+        from brian.SpikeMonitor
+    w : brian
+
+    Returns
+    -------
+    sta_avg : numpy array
+        The spike triggered average membrane potential
+
+    sta_std : numpy array
+        The standard deviation of the sta_avg
+
+    sta_wins : numpy array
+        Two dimensional array containing all the pre-spike membrane potential
+        windows
+    '''
+
+    if (out.size <= 1):
+        sta_avg = array([])
+        sta_std = array([])
+        sta_wins = array([])
+        return sta_avg, sta_std, sta_wins
+
+    w_d = w/dt # dimensionless window length (binned at 0.1 ms)   
+    sta_wins = zeros((out.size,w_d))
+    for i in range(out.size):
+        t = out[i]*second/dt
+        if (w_d < t):
+            w_start = t-w_d # window start position index
+        else:
+            continue # change this
+
+        w_end = t # window end index (+1 to include spike time in window)
+        sta_wins[i,:] = v[w_start:w_end]
+
+    sta_avg = mean(sta_wins,0)
+    sta_std = std(sta_wins,0)
+
+    return sta_avg, sta_std, sta_wins
+
+
+def sync_inp(n,s,sigma,rate,dura,dt=0.0001*second):
+    '''
+    Generates synchronous spike trains and returns spiketimes compatible
+    with Brian's MultipleSpikeGeneratorGroup function.
+    In other words, the array returned by this module should be passed as the
+    argument to the MulitpleSpikeGeneratorGroup in order to define it as an
+    input group.
+    
+    Parameters
+    ----------
+    n : int
+        Number of spike trains
+
+    s : float
+        Proportion of synchronous spike trains [0,1]
+
+    sigma : brian second (time)
+        Standard deviation of Gaussian random variable which is used to shift
+        each spike in a synchronous spike train (units: time)
+
+    rate : brian Hz (frequency)
+        Spike rate for each spike train (units: freq)
+
+    dura : brian second (time)
+        Duration of each spike train (units: time)
+    
+    dt : brian second (time)
+        Simulation time step (units: time)
+
+    Returns
+    -------
+    spiketimes : list of list
+        Each item on the list is a spike train. Each spike train is
+        a list of spike times.
+    '''
+
+    if not(0 <= s <= 1):
+        warn("Synchrony should be between 0 and 1. Setting to 1.")
+        s = 1
+    
+    n_ident = int(floor(n*s))   # number of identical spike trains
+    spiketrains = [] 
+    st_ident = poisson_spikes(dura,rate,dt)
+    for i in range(n_ident):
+        spiketrains.append(add_gauss_jitter(st_ident,sigma,dt))
+
+    for i in range(n_ident,n):
+        spiketrains.append(poisson_spikes(dura,rate,dt))
+
+    return spiketrains
+
+
+def poisson_spikes(dura,rate,dt=0.0001*second):
+    '''
+    Generates a single spike train with exponentially distributed inter-spike
+    intervals, i.e., a realisation of a Poisson process.
+    Returns a list of spike times.
+
+    Parameters
+    ----------
+    dura : brian second (time)
+        Duration of spike train
+
+    rate : brian Hz (frequency)
+        Spike rate
+        
+    dt : brian second (time)
+        Simulation time step (units: time)
+
+    Returns
+    -------
+    spiketrain : list
+        A spike train as a list of spike times
+    '''
+
+    spiketrain = []
+    #   generate first interval
+    while len(spiketrain) == 0:
+        newinterval = random.exponential(1./rate)*second
+        if newinterval < dt:
+            newinterval = dt
+        if newinterval < dura:
+            spiketrain = [newinterval]
+    #   generate intervals until we hit the duration            
+    while spiketrain[-1] < dura:
+        newinterval = random.exponential(1./rate)*second
+        if newinterval < dt:
+            newinterval = dt
+        spiketrain.append(spiketrain[-1]+newinterval)
+    #   remove last spike overflow from while condition
+    spiketrain = spiketrain[:-1]
+    return spiketrain
+       
+
+def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
+    '''
+    Adds jitter to each spike in the supplied spike train and returns the
+    resulting spike train.
+    Jitter is applied by adding a sample from a Gaussian random variable to
+    each spike time.
+
+    Parameters
+    ----------
+    spiketrain : list
+        A spike train characterised as a list of spike times
+
+    jitter : brian second (time)
+        Standard deviation of Gaussian random variable which is added to each
+        spike in a synchronous spike train (units: time)
+        
+    dt : brian second (time)
+        Simulation time step (units: time)
+
+    Returns
+    -------
+    jspiketrain : list 
+        A spike train characterised by a list of spike times        
+    '''
+
+    if (jitter == 0*second):
+        return spiketrain
+    
+    jspiketrain = spiketrain + random.normal(0, jitter, len(spiketrain))
+    
+    #   sort the spike train to account for the changes
+    jspiketrain.sort()   
+    #   can cause intervals to become shorter than dt
+    intervals = diff(jspiketrain)
+    while min(intervals) < dt/second:
+        index = where(intervals == min(intervals))[0][0]
+        intervals[index]+=dt/second 
+    jspiketrain = cumsum(intervals)
+    jspiketrain = [st*second for st in jspiketrain]
+    return jspiketrain
+
+
+def times_to_bin(spiketimes,binwidth):
+    '''
+    Converts spike trains into binary strings. Each bit is a bin of fixed width
+    
+    Parameters
+    ----------
+    spiketimes : numpy array
+        A spiketrain array from a brian SpikeMonitor
+    
+    binwidth : brian second (time)
+        The width of each bin
+
+    Returns
+    -------
+    bintimes : numpy array
+        Array of 0s and 1s, respectively indicating the absence or presence
+        of at least one spike in each bin
+    '''
+
+    st = array(spiketimes)/binwidth
+    st = array(st,int)
+    bintimes = zeros(max(st)+1)
+    bintimes[st] = 1
+
+    return bintimes
+
+
+def CV(spiketrain):
+    '''
+    Calculates the coefficient of variation for a spike train or any supplied
+    array of values
+
+    Parameters
+    ----------
+    spiketrain : numpy array (or arraylike)
+        A spike train characterised by an array of spike times
+
+    Returns
+    -------
+    CV : float
+        Coefficient of variation for the supplied values
+
+    '''
+
+    isi = diff(spiketrain)
+
+    avg_isi = mean(isi)
+    std_isi = std(isi)
+
+    if (avg_isi == 0 or std_isi == 0):
+        return 0
+    else:
+        return std_isi/avg_isi
+
+
+def CV2(spiketrain):
+    '''
+    Calculates the localised coefficient of variation for a spike train or
+    any supplied array of values
+
+    Parameters
+    ----------
+    spiketrain : numpy array (or arraylike)
+        A spike train characterised by an array of spike times
+
+    Returns
+    -------
+    CV2 : float
+        Localised coefficient of variation for the supplied values
+
+    '''
+
+    isi = diff(spiketrain)
+    N = len(isi)
+    if (N == 0):
+        return 0
+
+    mi_total = 0
+    for i in range(N-1):
+        mi_total = mi_total + abs(isi[i]-isi[i+1])/(isi[i]+isi[i+1])
+
+    return mi_total*2/N
+
+
+def IR(spiketrain):
+    '''
+    Calculates the IR measure for a spike train or any supplied array of values
+
+    Parameters
+    ----------
+    spiketrain : numpy array (or arraylike)
+        A spike train characterised by an array of spike times
+
+    Returns
+    -------
+    IR : float
+        IR measure for the supplied values
+
+    '''
+
+
+
+    isi = diff(spiketrain)
+    N = len(isi)
+    if (N == 0):
+        return 0
+
+    mi_total = 0
+    for i in range(N-1):
+        mi_total = mi_total + abs(log(isi[i]/isi[i+1]))
+
+    return mi_total*1/(N*log(4))
+
+
+def LV(spiketrain):
+    '''
+    Calculates the measure of local variation for a spike train or any
+    supplied array of values
+
+    Parameters
+    ----------
+    spiketrain : numpy array (or arraylike)
+        A spike train characterised by an array of spike times
+
+    Returns
+    -------
+    LV : float
+        Measure of local variation for the supplied values
+
+    '''
+
+
+    isi = diff(spiketrain)
+    N = len(isi)
+    if (N == 0):
+        return 0
+
+    mi_total = 0
+    for i in range(N-1):
+        mi_total = mi_total + ((isi[i] - isi[i+1])/(isi[i] + isi[i+1]))**2
+
+    return mi_total*3/N
+
+
+def SI(spiketrain):
+    '''
+    Calculates the SI measure for a spike train or any supplied array of values
+
+    Parameters
+    ----------
+    spiketrain : numpy array (or arraylike)
+        A spike train characterised by an array of spike times
+
+    Returns
+    -------
+    SI : float
+        SI measure for the supplied values
+
+    '''
+
+
+    isi = diff(spiketrain)
+    N = len(isi)
+    if (N == 0):
+        return 0
+
+    mi_sum = 0
+    for i in range(N-1):
+        mi_sum = mi_sum + log(4*isi[i]*isi[i+1]/((isi[i]+isi[i+1])**2))
+
+    return -1./(2*N*(1-log(2)))*mi_sum
+
