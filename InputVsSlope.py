@@ -2,17 +2,19 @@ from brian import *
 import time
 import sys
 import neurotools as nt
+import pickle
 
 if __name__=='__main__':
-    duration = 100*ms
+    duration = 0.5*second
     max_allowed_sims = 500
-    savelocation = '/home/achilleas/Documents/Uni/working_dir/simout.py/tmp/'
-
-    input_freqs = linspace(200, 400, 1)
-    input_num_sts = array(linspace(40, 100, 1),dtype=int)
-    input_volts = linspace(0.1, 0.5, 1)
-    synchrony = linspace(0, 1, 6)
-    jitter = linspace(0, 2, 5)
+    savelocation = \
+            "/home/achilleas/Documents/Uni/working_dir/simout.py/InputVsSlope/"
+    filename = savelocation+"ivs3.dat"
+    input_freqs = nt.unitrange(100*Hz, 101*Hz, 50*Hz)
+    input_num_sts = range(60, 80, 20)
+    input_volts = nt.unitrange(0.5*mV, 2*mV, 2.5*mV)
+    synchrony = arange(0, 1.01, 0.1)
+    jitter = nt.unitrange(0*ms, 4.01*ms, 0.5*ms)
     numsims = len(input_freqs)*len(input_num_sts)*len(input_volts)*\
             len(synchrony)*len(jitter)
     numinputsts = len(input_freqs)*sum(input_num_sts)*len(input_volts)*\
@@ -20,12 +22,12 @@ if __name__=='__main__':
     numconnections = numinputsts
     if numsims > max_allowed_sims:
         ans = None
+        print("The number of simulations is very large (%d > %d).\
+This may make the script (or even the entire system) unresponsive."\
+            % (numsims, max_allowed_sims))
         while ans != 'y' and ans != 'n' and ans != '':
-            ans = raw_input('The number of simulations is very large \
-(%d > %d). This may make the script (or even the entire system) unresponsive. \
-\nAre you sure you want to continue? [y/N] ' % (numsims, max_allowed_sims))
+            ans = raw_input("Are you sure you want to continue? [y/N]")
             ans = ans.lower()
-
         if ans == 'n' or ans == '':
             sys.exit("Exiting.")
     print('Building %d simulations with %d input spike trains and %d \
@@ -47,9 +49,10 @@ connections' % (numsims, numinputsts, numconnections))
             for v in input_volts:
                 for s in synchrony:
                     for j in jitter:
+                        # using pre-generated spike times
                         inp_spiketrains.extend(nt.sync_inp(n, s, j, r,\
                                 duration))
-                        configs.append([n, r*Hz, v*mV, s, j*ms])
+                        configs.append([n, r, v, s, j])
                         percent = len(configs)*100/numsims
                         print "%d/%d (%d%%)\r" %\
                                 (len(configs), numsims, percent),
@@ -65,7 +68,8 @@ connections' % (numsims, numinputsts, numconnections))
     if con != numconnections:
         sys.exit("Something went wrong. Counted %d connections instead of %d"\
                 % (con, numconnections))
-    cons = Connection(source=inp, target=nrns, state='V', weight=con_matrix*mV)
+    cons = Connection(source=inp, target=nrns, state='V',\
+            weight=con_matrix*volt)
     inp_mon = SpikeMonitor(inp)
     out_mon = SpikeMonitor(nrns)
     mem_mon = StateMonitor(nrns,'V',record=True)
@@ -82,3 +86,10 @@ connections' % (numsims, numinputsts, numconnections))
         m_slope, slopes = nt.npss(mem_mon[nrn], out_mon[nrn], V_th, 2*ms)
         M[nrn] = m_slope
 
+    
+    
+    M2d = np.reshape(M, (len(synchrony), len(jitter))).transpose()
+    pickle.dump((synchrony,jitter,M2d), open(filename,'w'))
+    print("Data saved in %s" % filename)
+    print("Plot the data using `python plot_data.py %s`" % filename)
+    

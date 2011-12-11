@@ -15,7 +15,8 @@ N_in = 10
 f_in = 10*Hz
 DV_s = 0.3*mV
 inp = PoissonGroup(N_in,f_in)
-nrns = NeuronGroup(N_sims,lif_eq,threshold=V_th,reset=V_reset,refractory=t_refr)
+nrns = NeuronGroup(N_sims,lif_eq,threshold=V_th,reset=V_reset,\
+        refractory=t_refr)
 con = Connection(inp,lif,'V')
 con[:,0] = DV_s
 lif.rest()
@@ -26,7 +27,7 @@ inp_mon = SpikeMonitor(inp)
 run(duration)
 
 print "Neuron(s) fired at: ",st.spiketimes
-print "Input rate voltage:\t\t",N_in*f_in*DV_s*tc
+print "Input rate voltage:\t\t",N_in*f_in*DV_s*tau_mem
 print "Mean membrane potential:\t",mean(mem[0])*volt
 
 

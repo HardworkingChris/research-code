@@ -1,8 +1,9 @@
 from pickle import load
 import os
-from sys import stderr
+from sys import stderr, exit
 from numpy import array, diff, floor, zeros, log, mean, std,\
         random, cumsum, histogram, where
+from brian import units
 from brian.units import second, volt
 from warnings import warn
 
@@ -416,7 +417,7 @@ def sta(v, out, w, dt=0.0001*second):
     return sta_avg, sta_std, sta_wins
 
 
-def sync_inp(n,s,sigma,rate,dura,dt=0.0001*second):
+def sync_inp(n, rate, s, sigma, dura, dt=0.0001*second):
     '''
     Generates synchronous spike trains and returns spiketimes compatible
     with Brian's MultipleSpikeGeneratorGroup function.
@@ -429,15 +430,15 @@ def sync_inp(n,s,sigma,rate,dura,dt=0.0001*second):
     n : int
         Number of spike trains
 
+    rate : brian Hz (frequency)
+        Spike rate for each spike train (units: freq)
+
     s : float
         Proportion of synchronous spike trains [0,1]
 
     sigma : brian second (time)
         Standard deviation of Gaussian random variable which is used to shift
         each spike in a synchronous spike train (units: time)
-
-    rate : brian Hz (frequency)
-        Spike rate for each spike train (units: freq)
 
     dura : brian second (time)
         Duration of each spike train (units: time)
@@ -724,3 +725,29 @@ def SI(spiketrain):
 
     return -1./(2*N*(1-log(2)))*mi_sum
 
+
+def unitrange(start, stop, step):
+    '''
+    Returns a list in the same manner as the Python built-in range, but works
+    with brian units.
+    '''
+    if not isinstance(start, units.Quantity):
+        exit("unitrange: `start` argument is not a brian unit.\
+Use Python build-in or numpy.arange for generating dimensionless lists.")
+    if not isinstance(stop, units.Quantity):
+        exit("unitrange: `stop` argument is not a brian unit.\
+Use Python build-in or numpy.arange for generating dimensionless lists.")
+    if not isinstance(step, units.Quantity):
+        exit("unitrange: `step` argument is not a brian unit.\
+Use Python build-in or numpy.arange for generating dimensionless lists.")
+    if not start.has_same_dimensions(stop)\
+        or not start.has_same_dimensions(step)\
+        or not stop.has_same_dimensions(step):
+            exit("Dimension mismatch in `unitrange`")
+    
+    x = start
+    retlist = []
+    while x < stop:
+        retlist.append(x)
+        x += step
+    return retlist
