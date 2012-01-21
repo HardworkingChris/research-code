@@ -597,15 +597,14 @@ def CV(spiketrain):
 
     '''
 
+    if (len(spiketrain) == 0):
+        return 0
+
     isi = diff(spiketrain)
 
     avg_isi = mean(isi)
     std_isi = std(isi)
-
-    if (avg_isi == 0 or std_isi == 0):
-        return 0
-    else:
-        return std_isi/avg_isi
+    return std_isi/avg_isi
 
 
 def CV2(spiketrain):
