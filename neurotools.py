@@ -599,7 +599,7 @@ def CV(spiketrain):
 
     isi = diff(spiketrain)
     if len(isi) == 0:
-        return 0
+        return 0.0
 
     avg_isi = mean(isi)
     std_isi = std(isi)
