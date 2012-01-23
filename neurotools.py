@@ -66,8 +66,8 @@ class SynchronousInputGroup:
             Proportion of synchronous spike trains [0,1]
 
         jitter : brian second (time)
-            Standard deviation of Gaussian random variable which is used to 
-            shift each spike in a synchronous spike train (units: time) 
+            Standard deviation of Gaussian random variable which is used to
+            shift each spike in a synchronous spike train (units: time)
 
         dt : brian second (time)
             Simulation time step (default 0.1 ms)
@@ -81,7 +81,7 @@ class SynchronousInputGroup:
         if not(0 <= sync <= 1):
             warn("Synchrony should be between 0 and 1. Setting to 0")
             sync = 0
-        
+
         spiketrains = []
         n_ident = int(floor(n*sync))   # number of identical spike trains
         st_ident = self.sync_inp_gen(n_ident, rate, jitter, dt)
@@ -165,7 +165,7 @@ def loadsim(simname):
 
     Returns
     -------
-    mem, out, stm : numpy arrays
+    mem, spiketrain, stm : numpy arrays
         Simulation data
 
     '''
@@ -178,9 +178,9 @@ def loadsim(simname):
 
     outname = simname+".out"
     if (os.path.exists(outname)):
-        out = load(open(outname,"rb"))
+        spiketrain = load(open(outname,"rb"))
     else:
-        out = array([])
+        spiketrain = array([])
 
     stmname = simname+".stm"
     if (os.path.exists(stmname)):
@@ -188,10 +188,10 @@ def loadsim(simname):
     else:
         stm = array([])
 
-    if ((not mem.size) and (not out.size) and (not stm.size)):
+    if ((not mem.size) and (not spiketrain.size) and (not stm.size)):
         warn("No simulation data exists with name `%s` \n" % simname)
 
-    return mem, out, stm
+    return mem, spiketrain, stm
 
 
 def slope_distribution(v,w,rem_zero=True):
@@ -261,7 +261,7 @@ def positive_slope_distribution(v,w):
     return dist
 
 
-def npss(v, out, v_th, w, dt=0.0001*second):
+def npss(v, spiketrain, v_th, w, dt=0.0001*second):
     '''
     Calculates the normalised pre-spike membrane potential slope.
 
@@ -269,7 +269,7 @@ def npss(v, out, v_th, w, dt=0.0001*second):
     ----------
     v : numpy array
         Membrane potential values as taken from brian.StateMonitor
-    out : numpy array
+    spiketrain : numpy array
         Spike train of the membrane potential data in 'v'
         as taken from brian.SpikeMonitor
     v_th : brian voltage
@@ -288,10 +288,10 @@ def npss(v, out, v_th, w, dt=0.0001*second):
         The individual npss values for each spike
 
     '''
-    if (out.size <= 1):
+    if (spiketrain.size <= 1):
         return 0,[0]
 
-    (m,s,wins) = sta(v, out, w, dt)
+    (m,s,wins) = sta(v, spiketrain, w, dt)
     wins[:,-1] = v_th
     # remove first window
     wins = wins[1:,:]
@@ -301,9 +301,9 @@ def npss(v, out, v_th, w, dt=0.0001*second):
 
     slopes = mean(diff(wins,axis=1),1)
 
-    firstspiketime_d = int(out[0]*second/dt)
+    firstspiketime_d = int(spiketrain[0]*second/dt)
     v_reset = v[firstspiketime_d+1]
-    isis = diff(out)/dt
+    isis = diff(spiketrain)/dt
 
     # lower bound calculation
     low_bound = (th_d-v_reset)/isis
@@ -319,24 +319,24 @@ def npss(v, out, v_th, w, dt=0.0001*second):
     return mean_slope, slopes_norm
 
 
-def npss_ar(v, out, v_th, tau_m, w):
+def npss_ar(v, spiketrain, v_th, tau_m, w):
     '''
     BROKEN!!!
     '''
     warn("BROKEN! FIX ME!")
     return 0,[0]
-    if (out.size <= 1):
+    if (spiketrain.size <= 1):
         return 0,[0]
 
-    (m,s,wins) = sta(v, out, w)
+    (m,s,wins) = sta(v, spiketrain, w)
     wins[:,-1] = v_th
     # remove first window
     wins = wins[1:,:]
     slopes = mean(diff(wins,axis=1),1)
-    spiketime_d = int(out[0]*second/(0.0001*second))
+    spiketime_d = int(spiketrain[0]*second/(0.0001*second))
     v_reset = v[spiketime_d+1]*mV
     print "reset: ",v_reset
-    isis = diff(out)
+    isis = diff(spiketrain)
     isis = isis*second/(0.0001*second)
     # lower bound calculation
     low_bound = (v_th-v_reset)/isis
@@ -365,7 +365,40 @@ def npss_ar(v, out, v_th, tau_m, w):
     return mean_slope,slopes_norm
 
 
-def sta(v, out, w, dt=0.0001*second):
+def firing_slope(mem, spiketrain, dt=0.0001*second):
+    '''
+    Returns the mean value and a list containing each individual values of the
+    slopes of the membrane potential at the time of firingof each spike.
+
+    Parameters
+    ----------
+    mem : numpy array
+        Membrane potential as taken from brian.StateMonitor
+    spiketrain : numpy array
+        Spike times corresponding to the membrane potential data in `v`
+    dt : brian second (time)
+        Simulation time step (default 0.1 ms)
+
+    Returns
+    -------
+    slope_avg : float
+        The mean slope of the membrane potential for all threshold crossings
+    slopes : numpy array
+        The individual values of the membrane potential slope at each
+        threshold crossing
+
+    NOTE: Although the return values are untiless they represent volt/second
+    values.
+    '''
+
+    dt /= second
+    st_dt = spiketrain/dt
+    st_dt = st_dt.astype(int)
+    slopes = mem[st_dt]-mem[st_dt-1]
+    return mean(slopes), slopes
+
+
+def sta(v, spiketrain, w, dt=0.0001*second):
     '''
     Calculates the Spike Triggered Average (currently only membrane potential)
     of the supplied data. Single neuron data only.
@@ -374,10 +407,13 @@ def sta(v, out, w, dt=0.0001*second):
     ----------
     v : numpy array
         Membrane potential values as taken from brian.StateMonitor
-    out : numpy array
-        Spike train of the membrane potential data in 'v' as taken
+    spiketrain : numpy array
+        Spike train of the membrane potential data in `v` as taken
         from brian.SpikeMonitor
-    w : brian
+    w : brian second (time)
+        The pre-spike time window
+    dt : brian second (time)
+        Simulation time step (default 0.1 ms)
 
     Returns
     -------
@@ -392,22 +428,22 @@ def sta(v, out, w, dt=0.0001*second):
         windows
     '''
 
-    if (out.size <= 1):
+    if (spiketrain.size <= 1):
         sta_avg = array([])
         sta_std = array([])
         sta_wins = array([])
         return sta_avg, sta_std, sta_wins
 
     w_d = w/dt # dimensionless window length (binned at 0.1 ms)
-    sta_wins = zeros((out.size,w_d))
-    for i in range(out.size):
-        t = out[i]*second/dt
+    sta_wins = zeros((spiketrain.size,w_d))
+    for i in range(spiketrain.size):
+        t = spiketrain[i]*second/dt
         if (w_d < t):
             w_start = t-w_d # window start position index
         else:
             continue # change this
 
-        w_end = t # window end index (+1 to include spike time in window)
+        w_end = t # window end index
         sta_wins[i,:] = v[w_start:w_end]
 
     sta_avg = mean(sta_wins,0)
@@ -552,17 +588,19 @@ def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
     return jspiketrain
 
 
-def times_to_bin(spiketimes,binwidth):
+def times_to_bin(spiketimes, dt=0.0001*second):
     '''
-    Converts spike trains into binary strings. Each bit is a bin of fixed width
+    Converts spike trains into binary strings. Each bit is a bin of fixed width.
+    This function is useful for aligning a binary representation of a spike
+    train to recordings of the respective membrane potential.
 
     Parameters
     ----------
     spiketimes : numpy array
         A spiketrain array from a brian SpikeMonitor
 
-    binwidth : brian second (time)
-        The width of each bin
+    dt : brian second (time)
+        The width of each bin (default 0.1 ms)
 
     Returns
     -------
@@ -571,7 +609,7 @@ def times_to_bin(spiketimes,binwidth):
         of at least one spike in each bin
     '''
 
-    st = array(spiketimes)/binwidth
+    st = spiketimes/binwidth
     st = array(st,int)
     bintimes = zeros(max(st)+1)
     bintimes[st] = 1
