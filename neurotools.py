@@ -155,19 +155,21 @@ def loadsim(simname):
     If any of the above is not found, the function returns an empty list
     for the respective variable.
 
+    NOTE: Best to use brian.tools.datamanager.DataManager object where possible.
+
     Parameters
     ----------
     simname : string
         The name of the file containing the simulation data
         (excluding extensions)
-    
+
     Returns
     -------
     mem, out, stm : numpy arrays
         Simulation data
 
     '''
-    
+
     memname = simname+".mem"
     if (os.path.exists(memname)):
         mem = load(open(memname,"rb"))
@@ -185,17 +187,17 @@ def loadsim(simname):
         stm = load(open(stmname,"rb"))
     else:
         stm = array([])
-    
+
     if ((not mem.size) and (not out.size) and (not stm.size)):
         warn("No simulation data exists with name `%s` \n" % simname)
-    
+
     return mem, out, stm
 
 
 def slope_distribution(v,w,rem_zero=True):
     '''
     Calculates the distribution of membrane potential slope values.
-    
+
     Parameters
     ----------
     v : numpy array
@@ -206,13 +208,13 @@ def slope_distribution(v,w,rem_zero=True):
     rem_zero : bool, optional
         If True, the function ignores slope values equal to zero,
         which are caused by refractoriness and are of little interest.
-        
+
     Returns
     -------
     dist : array
         The values of the distribution. See numpy.histogram for more
         information on the shape of the return array.
-        
+
     See Also
     --------
     histogram
@@ -221,17 +223,17 @@ def slope_distribution(v,w,rem_zero=True):
     dv = diff(v)
     if (rem_zero):
         dv = dv[dv != 0]
-        
+
     nbins = (max(dv)-min(dv))/w
     nbins = int(nbins)
     dist = histogram(dv,nbins)
     return dist
-    
+
 
 def positive_slope_distribution(v,w):
     '''
     Calculates the distribution of positive membrane potential slope values.
-    
+
     Parameters
     ----------
     v : numpy array
@@ -245,7 +247,7 @@ def positive_slope_distribution(v,w):
     dist : array
         The values of the distribution. See numpy.histogram for more
         information on the shape of the return array.
-        
+
     See Also
     --------
     numpy.histogram
@@ -257,7 +259,7 @@ def positive_slope_distribution(v,w):
     nbins = int(nbins)
     dist = histogram(dv,nbins)
     return dist
-    
+
 
 def npss(v, out, v_th, w, dt=0.0001*second):
     '''
@@ -265,7 +267,7 @@ def npss(v, out, v_th, w, dt=0.0001*second):
 
     Parameters
     ----------
-    v : numpy array 
+    v : numpy array
         Membrane potential values as taken from brian.StateMonitor
     out : numpy array
         Spike train of the membrane potential data in 'v'
@@ -288,12 +290,12 @@ def npss(v, out, v_th, w, dt=0.0001*second):
     '''
     if (out.size <= 1):
         return 0,[0]
-    
+
     (m,s,wins) = sta(v, out, w, dt)
     wins[:,-1] = v_th
     # remove first window
     wins = wins[1:,:]
-   
+
     w_d = w/dt-1
     th_d = v_th/volt
 
@@ -310,12 +312,12 @@ def npss(v, out, v_th, w, dt=0.0001*second):
     high_bound = (th_d-v_reset)/w_d
     slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
     slopes_norm[slopes_norm < 0] = 0
-    
+
     overmax = (slopes_norm > 1).nonzero()
-        
+
     mean_slope = mean(slopes_norm)
     return mean_slope, slopes_norm
-  
+
 
 def npss_ar(v, out, v_th, tau_m, w):
     '''
@@ -325,7 +327,6 @@ def npss_ar(v, out, v_th, tau_m, w):
     return 0,[0]
     if (out.size <= 1):
         return 0,[0]
-    
 
     (m,s,wins) = sta(v, out, w)
     wins[:,-1] = v_th
@@ -348,10 +349,8 @@ def npss_ar(v, out, v_th, tau_m, w):
             exp(-(array(range(t_decay_max))/(tau_m/(0.0001*second))))
     high_start = decay_max[t_decay-1]
     high_bound = (v_th/volt-high_start)/(w/(0.0001*second))
-    
     slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
     slopes_norm[slopes_norm < 0] = 0
-    
     overmax = (slopes_norm > 1).nonzero()
     '''
     if (size(overmax) > 0):
@@ -361,10 +360,10 @@ def npss_ar(v, out, v_th, tau_m, w):
         print "Slopes :",slopes[overmax]
         print "Norm sl:",slopes_norm[overmax]
         print "ISIs   :",isis[overmax]
-    '''     
+    '''
     mean_slope = mean(slopes_norm)
     return mean_slope,slopes_norm
- 
+
 
 def sta(v, out, w, dt=0.0001*second):
     '''
@@ -373,7 +372,7 @@ def sta(v, out, w, dt=0.0001*second):
 
     Parameters
     ----------
-    v : numpy array 
+    v : numpy array
         Membrane potential values as taken from brian.StateMonitor
     out : numpy array
         Spike train of the membrane potential data in 'v' as taken
@@ -399,7 +398,7 @@ def sta(v, out, w, dt=0.0001*second):
         sta_wins = array([])
         return sta_avg, sta_std, sta_wins
 
-    w_d = w/dt # dimensionless window length (binned at 0.1 ms)   
+    w_d = w/dt # dimensionless window length (binned at 0.1 ms)
     sta_wins = zeros((out.size,w_d))
     for i in range(out.size):
         t = out[i]*second/dt
@@ -424,7 +423,7 @@ def sync_inp(n, rate, s, sigma, dura, dt=0.0001*second):
     In other words, the array returned by this module should be passed as the
     argument to the MulitpleSpikeGeneratorGroup in order to define it as an
     input group.
-    
+
     Parameters
     ----------
     n : int
@@ -442,7 +441,7 @@ def sync_inp(n, rate, s, sigma, dura, dt=0.0001*second):
 
     dura : brian second (time)
         Duration of each spike train (units: time)
-    
+
     dt : brian second (time)
         Simulation time step (units: time)
 
@@ -456,9 +455,9 @@ def sync_inp(n, rate, s, sigma, dura, dt=0.0001*second):
     if not(0 <= s <= 1):
         warn("Synchrony should be between 0 and 1. Setting to 1.")
         s = 1
-    
+
     n_ident = int(floor(n*s))   # number of identical spike trains
-    spiketrains = [] 
+    spiketrains = []
     st_ident = poisson_spikes(dura,rate,dt)
     for i in range(n_ident):
         spiketrains.append(add_gauss_jitter(st_ident,sigma,dt))
@@ -482,7 +481,7 @@ def poisson_spikes(dura,rate,dt=0.0001*second):
 
     rate : brian Hz (frequency)
         Spike rate
-        
+
     dt : brian second (time)
         Simulation time step (units: time)
 
@@ -500,7 +499,7 @@ def poisson_spikes(dura,rate,dt=0.0001*second):
             newinterval = dt
         if newinterval < dura:
             spiketrain = [newinterval]
-    #   generate intervals until we hit the duration            
+    #   generate intervals until we hit the duration
     while spiketrain[-1] < dura:
         newinterval = random.exponential(1./rate)*second
         if newinterval < dt:
@@ -509,7 +508,7 @@ def poisson_spikes(dura,rate,dt=0.0001*second):
     #   remove last spike overflow from while condition
     spiketrain = spiketrain[:-1]
     return spiketrain
-       
+
 
 def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
     '''
@@ -526,28 +525,28 @@ def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
     jitter : brian second (time)
         Standard deviation of Gaussian random variable which is added to each
         spike in a synchronous spike train (units: time)
-        
+
     dt : brian second (time)
         Simulation time step (units: time)
 
     Returns
     -------
-    jspiketrain : list 
-        A spike train characterised by a list of spike times        
+    jspiketrain : list
+        A spike train characterised by a list of spike times
     '''
 
     if (jitter == 0*second):
         return spiketrain
-    
+
     jspiketrain = spiketrain + random.normal(0, jitter, len(spiketrain))
-    
+
     #   sort the spike train to account for the changes
-    jspiketrain.sort()   
+    jspiketrain.sort()
     #   can cause intervals to become shorter than dt
     intervals = diff(jspiketrain)
     while min(intervals) < dt/second:
         index = where(intervals == min(intervals))[0][0]
-        intervals[index]+=dt/second 
+        intervals[index]+=dt/second
     jspiketrain = cumsum(intervals)
     jspiketrain = [st*second for st in jspiketrain]
     return jspiketrain
@@ -556,12 +555,12 @@ def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
 def times_to_bin(spiketimes,binwidth):
     '''
     Converts spike trains into binary strings. Each bit is a bin of fixed width
-    
+
     Parameters
     ----------
     spiketimes : numpy array
         A spiketrain array from a brian SpikeMonitor
-    
+
     binwidth : brian second (time)
         The width of each bin
 
@@ -742,10 +741,11 @@ Use Python build-in or numpy.arange for generating dimensionless lists.")
         or not start.has_same_dimensions(step)\
         or not stop.has_same_dimensions(step):
             exit("Dimension mismatch in `unitrange`")
-    
+
     x = start
     retlist = []
     while x < stop:
         retlist.append(x)
         x += step
     return retlist
+
