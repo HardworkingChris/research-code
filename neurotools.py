@@ -2,7 +2,7 @@ from pickle import load
 import os
 from sys import stderr, exit
 from numpy import array, diff, floor, zeros, log, mean, std,\
-        random, cumsum, histogram, where
+        random, cumsum, histogram, where, ceil, arange
 from brian import units
 from brian.units import second, volt
 from warnings import warn
@@ -368,7 +368,7 @@ def npss_ar(v, spiketrain, v_th, tau_m, w):
 def firing_slope(mem, spiketrain, dt=0.0001*second):
     '''
     Returns the mean value and a list containing each individual values of the
-    slopes of the membrane potential at the time of firingof each spike.
+    slopes of the membrane potential at the time of firing of each spike.
 
     Parameters
     ----------
@@ -391,6 +391,8 @@ def firing_slope(mem, spiketrain, dt=0.0001*second):
     values.
     '''
 
+    if len(spiketrain) == 0:
+        return 0, array([])
     dt /= second
     st_dt = spiketrain/dt
     st_dt = st_dt.astype(int)
@@ -402,6 +404,9 @@ def sta(v, spiketrain, w, dt=0.0001*second):
     '''
     Calculates the Spike Triggered Average (currently only membrane potential)
     of the supplied data. Single neuron data only.
+    This is the average waveform of the membrane potential in a period `w`
+    before firing. The individual windows are also returned as well as the
+    standard deviation.
 
     Parameters
     ----------
@@ -787,3 +792,19 @@ Use Python build-in or numpy.arange for generating dimensionless lists.")
         x += step
     return retlist
 
+def spike_period_hist(spiketimes, freq, duration, nbins=10, dt=0.0001*second):
+    dt = float(dt)
+    period = 1/freq # in ms
+    period = int(period/dt) # in timesteps
+    binwidth = period/nbins # segment period into 10 bins
+    bins = zeros(nbins)
+    nper = int((duration/dt)/period) # number of periods
+    st_a = array(spiketimes)/dt
+    for i in range(len(bins)):
+        for p in range(nper):
+            perstart = p*period
+            inbin = st_a[(st_a >= perstart+i*binwidth) &
+                    (st_a < perstart+(i+1)*binwidth-1)]
+            bins[i] += len(inbin)
+    left = arange(0, 1, 1./nbins)
+    return left, bins

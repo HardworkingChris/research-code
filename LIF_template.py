@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from brian import *
 
 duration = 1*second
@@ -8,12 +6,12 @@ N_sims = 1
 lif_eq = ['dV/dt = (V_rest-V)/tau_mem : volt']
 V_rest = 0*mV
 V_reset = 0*mV
-V_th = 15*mV
+V_th = 13*mV
 t_refr = 2*ms
 tau_mem = 10*msecond
-N_in = 2000
-f_in = 5*Hz
-DV_s = 0.15*mV
+N_in = 10
+f_in = 50*Hz
+DV_s = 2.5*mV
 inp = PoissonGroup(N_in, f_in)
 nrns = NeuronGroup(N_sims, lif_eq, threshold=V_th, reset=V_reset,\
         refractory=t_refr)
@@ -29,13 +27,13 @@ for n in range(N_sims):
     f_out = len(st.spiketimes[n])/duration
     print "Neuron %i firing rate: %s" % (n, f_out)
 
-subplot(2,1,1)
-raster_plot(inp_mon)
-subplot(2,1,2)
-plot(mem.times,mem[0],mem.times,ones(len(mem.times))*V_th)
-title('Membrane voltage trace of neuron 0')
-xlabel("Time (seconds)")
-ylabel("Volts")
-show()
+#subplot(2,1,1)
+#raster_plot(inp_mon)
+#subplot(2,1,2)
+#plot(mem.times,mem[0],mem.times,ones(len(mem.times))*V_th)
+#title('Membrane voltage trace of neuron 0')
+#xlabel("Time (seconds)")
+#ylabel("Volts")
+#show()
 
 
