@@ -240,7 +240,7 @@ def positive_slope_distribution(v,w):
         Membrane potential values as taken from brian.StateMonitor
     w : float or brian voltage
         Precision of distribution. Slope values are grouped based on the size
-        of w and considered equal.
+        of w and considered equal (histogram bin size).
 
     Return
     -------
@@ -398,6 +398,11 @@ def firing_slope(mem, spiketrain, dt=0.0001*second):
     st_dt = st_dt.astype(int)
     slopes = mem[st_dt]-mem[st_dt-1]
     return mean(slopes), slopes
+
+
+def norm_firing_slope(mem, spiketrain, dt=0.0001*second):
+    mslope, slopes = firingslope(mem, spiketrain, dt)
+
 
 
 def sta(v, spiketrain, w, dt=0.0001*second):
@@ -791,6 +796,7 @@ Use Python build-in or numpy.arange for generating dimensionless lists.")
         retlist.append(x)
         x += step
     return retlist
+
 
 def spike_period_hist(spiketimes, freq, duration, nbins=10, dt=0.0001*second):
     dt = float(dt)
