@@ -122,7 +122,7 @@ class SynchronousInputGroup:
         '''
 
         t = 0*second
-        prev_t = t 
+        prev_t = t
         iter = n
         while(True):
             if iter == n:
@@ -365,7 +365,7 @@ def npss_ar(v, spiketrain, v_th, tau_m, w):
     return mean_slope,slopes_norm
 
 
-def firing_slope(mem, spiketrain, dt=0.0001*second):
+def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
     '''
     Returns the mean value and a list containing each individual values of the
     slopes of the membrane potential at the time of firing of each spike.
@@ -378,6 +378,8 @@ def firing_slope(mem, spiketrain, dt=0.0001*second):
         Spike times corresponding to the membrane potential data in `v`
     dt : brian second (time)
         Simulation time step (default 0.1 ms)
+    w : brian second (time)
+        Slope window
 
     Returns
     -------
@@ -391,18 +393,25 @@ def firing_slope(mem, spiketrain, dt=0.0001*second):
     values.
     '''
 
-    if len(spiketrain) == 0:
+    if w < dt: w = dt
+    if len(spiketrain) < 2:
         return 0, array([])
+    min_interval = min(diff(spiketrain))*second
+    if w > min_interval:
+        warn("Slope window is larger than the smallest interval.\n%f > %f"
+                % (w, min_interval))
     dt /= second
     st_dt = spiketrain/dt
+    w_dt = w/dt
+    w_dt = int(w_dt)
     st_dt = st_dt.astype(int)
-    slopes = mem[st_dt]-mem[st_dt-1]
+    st_dt = st_dt[st_dt>w_dt]
+    slopes = (mem[st_dt]-mem[st_dt-w_dt])/w
     return mean(slopes), slopes
 
 
 def norm_firing_slope(mem, spiketrain, dt=0.0001*second):
     mslope, slopes = firingslope(mem, spiketrain, dt)
-
 
 
 def sta(v, spiketrain, w, dt=0.0001*second):
