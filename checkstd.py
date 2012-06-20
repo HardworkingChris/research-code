@@ -1,0 +1,17 @@
+import numpy as np
+a = np.random.rand(1000)*(np.random.rand()*1000)
+b = np.random.rand(300)*(np.random.rand()*3000)
+ma = np.mean(a)
+mb = np.mean(b)
+Na = len(a)
+Nb = len(b)
+pop = np.append(a,b)
+mp = np.mean(pop)
+mab = (Na*ma + Nb*mb)/(Na+Nb)
+print "Mean check: \t%f == %f" % (mp, mab)
+sp = np.std(pop)
+sa = np.std(a)
+sb = np.std(b)
+sab = np.sqrt( (Na*sa**2 + Nb*sb**2) / (Na+Nb) + (Na*Nb) * ((ma - mb)**2) / ((Na+Nb)**2) )
+print "Std check: \t%f == %f" % (sp, sab)
+
