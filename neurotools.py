@@ -2,7 +2,7 @@ from pickle import load
 import os
 from sys import stderr, exit
 from numpy import array, diff, floor, zeros, log, mean, std,\
-        random, cumsum, histogram, where, ceil, arange
+        random, cumsum, histogram, where, ceil, arange, divide, exp
 from brian import units
 from brian.units import second, volt
 from warnings import warn
@@ -291,6 +291,13 @@ def npss(v, spiketrain, v_th, w, dt=0.0001*second):
     if (spiketrain.size <= 1):
         return 0,[0]
 
+    '''
+    Using the STA might be a processing hog. We could just as easily
+    use the plain m calculation (V(t) - V(t-w))/w as w do in the new
+    firing slope.
+    Perhaps I could/should discard this function, or at least mark it as
+    deprecated.
+    '''
     (m,s,wins) = sta(v, spiketrain, w, dt)
     wins[:,-1] = v_th
     # remove first window
@@ -323,7 +330,7 @@ def npss_ar(v, spiketrain, v_th, tau_m, w):
     '''
     BROKEN!!!
     '''
-    warn("BROKEN! FIX ME!")
+    warn("npss_ar: BROKEN! FIX ME!")
     return 0,[0]
     if (spiketrain.size <= 1):
         return 0,[0]
@@ -396,6 +403,7 @@ def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
     if w < dt: w = dt
     if len(spiketrain) < 2:
         return 0, array([])
+    spiketrain = spiketrain[spiketrain > w] # discards spikes that occurred too early
     min_interval = min(diff(spiketrain))*second
     if w > min_interval:
         warn("Slope window is larger than the smallest interval.\n%f > %f"
@@ -405,13 +413,66 @@ def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
     w_dt = w/dt
     w_dt = int(w_dt)
     st_dt = st_dt.astype(int)
-    st_dt = st_dt[st_dt>w_dt]
     slopes = (mem[st_dt]-mem[st_dt-w_dt])/w
     return mean(slopes), slopes
 
 
-def norm_firing_slope(mem, spiketrain, dt=0.0001*second):
-    mslope, slopes = firingslope(mem, spiketrain, dt)
+def norm_firing_slope(mem, spiketrain, th, tau,
+        dt=0.0001*second, w=0.0001*second):
+    '''
+    This function will replace npss for calculating the normalised slope.
+    It doesn't use the STA to calculate slopes, which should be faster.
+
+    Parameters
+    ----------
+    mem : numpy array
+        Membrane potential as taken from brian.StateMonitor
+    spiketrain : numpy array
+        Spike times corresponding to the membrane potential data in `v`
+    th : brian volt (potential)
+        Neuron's firing threshold
+    tau : brian second (time)
+        Neuron's membrane leak time constant
+    dt : brian second (time)
+        Simulation time step (default 0.1 ms)
+    w : brian second (time)
+        Slope window
+
+    Returns
+    -------
+    slope_avg : float
+        The mean slope of the membrane potential for all threshold crossings
+    slopes : numpy array
+        The individual values of the membrane potential slope at each
+        threshold crossing
+
+    NOTE: Although the return values are untiless they represent volt/second
+    values.
+    '''
+    if w < dt: w = dt
+    if len(spiketrain) < 2:
+        return 0, array([])
+    spiketrain = spiketrain[spiketrain > w] # discard spikes that occurred too early
+    mslope, slopes = firing_slope(mem, spiketrain, dt, w)
+    first_spike = spiketrain[0]
+    first_spike_index = int(first_spike/dt)
+    reset = mem[first_spike_index+1]
+    slope_max = (th-reset)/w
+    '''
+    Minimum slope is ISI dependent and requires time constant to calculate
+    '''
+    ISIs = diff(spiketrain)
+    min_input = (th - reset)/(1-exp(-ISIs/tau))
+    lowstart = reset + min_input * (1-exp(-(ISIs-w)/tau))
+    slope_min = (th - lowstart)/w
+    slopes_normed = (slopes[1:] - slope_min)/(slope_max - slope_min)
+    if min(slopes_normed) < 0 or max(slopes_normed) > 1:
+        import matplotlib as mpl
+        mpl.pyplot.plot(mem)
+        mpl.pyplot.title("normalised slopes [%f, %f]" % (min(slopes_normed),
+            max(slopes_normed)))
+        mpl.pyplot.show()
+    return mean(slopes_normed), slopes_normed
 
 
 def sta(v, spiketrain, w, dt=0.0001*second):
@@ -595,7 +656,7 @@ def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
 
     jspiketrain = spiketrain + random.normal(0, jitter, len(spiketrain))
 
-    #   sort the spike train to account for the changes
+    #   sort the spike train to account for ordering changes
     jspiketrain.sort()
     #   can cause intervals to become shorter than dt
     intervals = diff(jspiketrain)
@@ -628,7 +689,7 @@ def times_to_bin(spiketimes, dt=0.0001*second):
         of at least one spike in each bin
     '''
 
-    st = spiketimes/binwidth
+    st = divide(spiketimes,dt)
     st = array(st,int)
     bintimes = zeros(max(st)+1)
     bintimes[st] = 1
