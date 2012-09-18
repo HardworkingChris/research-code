@@ -669,7 +669,7 @@ def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
     return jspiketrain
 
 
-def times_to_bin(spiketimes, dt=0.0001*second):
+def times_to_bin(spiketimes, dt=0.001*second):
     '''
     Converts spike trains into binary strings. Each bit is a bin of fixed width.
     This function is useful for aligning a binary representation of a spike
@@ -682,7 +682,7 @@ def times_to_bin(spiketimes, dt=0.0001*second):
         A spiketrain array from a brian SpikeMonitor
 
     dt : brian second (time)
-        The width of each bin (default 0.1 ms)
+        The width of each bin (default 1 ms)
 
     Returns
     -------
