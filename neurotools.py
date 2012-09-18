@@ -398,22 +398,23 @@ def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
 
     NOTE: Although the return values are untiless they represent volt/second
     values.
+
+    TODO: Make separate function that accepts a spike monitor, or dictionary
+    and returns a dictionary of slope values, for brian compatibility.
     '''
 
     if w < dt: w = dt
-    if len(spiketrain) < 2:
-        return 0, array([])
-    spiketrain = spiketrain[spiketrain > w] # discards spikes that occurred too early
+    if len(spiketrain) < 2: return 0, array([])
+    # discard spikes that occurred too early
+    spiketrain = spiketrain[spiketrain > w]
     min_interval = min(diff(spiketrain))*second
     if w > min_interval:
         warn("Slope window is larger than the smallest interval.\n%f > %f"
                 % (w, min_interval))
-    dt /= second
     st_dt = spiketrain/dt
-    w_dt = w/dt
-    w_dt = int(w_dt)
     st_dt = st_dt.astype(int)
-    slopes = (mem[st_dt]-mem[st_dt-w_dt])/w
+    w_dt = int(w/dt)
+    slopes = (mem[st_dt]-mem[st_dt-w_dt])*volt/w
     return mean(slopes), slopes
 
 
@@ -672,7 +673,8 @@ def times_to_bin(spiketimes, dt=0.0001*second):
     '''
     Converts spike trains into binary strings. Each bit is a bin of fixed width.
     This function is useful for aligning a binary representation of a spike
-    train to recordings of the respective membrane potential.
+    train to recordings of the respective membrane potential and for processing
+    spike trains in binary format.
 
     Parameters
     ----------
@@ -686,11 +688,14 @@ def times_to_bin(spiketimes, dt=0.0001*second):
     -------
     bintimes : numpy array
         Array of 0s and 1s, respectively indicating the absence or presence
-        of at least one spike in each bin
+        of at least one spike in each bin. Information on potential multiple
+        spikes in a bin is lost.
     '''
 
+    if len(spiketimes) == 0:
+        return array([])
     st = divide(spiketimes,dt)
-    st = array(st,int)
+    st = st.astype('int')
     bintimes = zeros(max(st)+1)
     bintimes[st] = 1
 
