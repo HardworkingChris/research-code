@@ -7,4 +7,9 @@ fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 ax.scatter(x,y,z)
 
+# In an interactive pylab environment, or when using Brian, the following
+# also works (simpler)
 
+from mpl_toolkits import mplot3d
+ax = subplot(111, projection='3d')
+ax.scatter3D(x,y,z)
