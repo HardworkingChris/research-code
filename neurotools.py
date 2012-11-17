@@ -669,7 +669,7 @@ def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
     return jspiketrain
 
 
-def times_to_bin(spiketimes, dt=0.001*second):
+def times_to_bin(spiketimes, dt=0.001*second, duration=None):
     '''
     Converts spike trains into binary strings. Each bit is a bin of fixed width.
     This function is useful for aligning a binary representation of a spike
@@ -684,6 +684,12 @@ def times_to_bin(spiketimes, dt=0.001*second):
     dt : brian second (time)
         The width of each bin (default 1 ms)
 
+    duration: brian second (time)
+        The duration of the spike train. If `None`, the length of the spike
+        train is determined by the last spike time. If a time is specified, the
+        final spike train is either truncated (if duration < last_spike) or
+        the spike train is padded with zeros.
+
     Returns
     -------
     bintimes : numpy array
@@ -692,11 +698,17 @@ def times_to_bin(spiketimes, dt=0.001*second):
         spikes in a bin is lost.
     '''
 
-    if len(spiketimes) == 0:
-        return array([])
     st = divide(spiketimes,dt)
     st = st.astype('int')
-    bintimes = zeros(max(st)+1)
+    if duration is None:
+        binlength = max(st)+1
+    else:
+        binlength = int(duration/dt)
+    bintimes = zeros(binlength)
+    if len(st) == 0:
+        return bintimes
+    if st[-1] > binlength:
+        st = st[st < binlength]
     bintimes[st] = 1
 
     return bintimes
@@ -850,6 +862,8 @@ def unitrange(start, stop, step):
     '''
     Returns a list in the same manner as the Python built-in range, but works
     with brian units.
+
+    REMOVE exit() INSTANCES. LIBRARY SHOULD NOT CALL sys.exit() FUNCTION.
     '''
     if not isinstance(start, units.Quantity):
         exit("unitrange: `start` argument is not a brian unit.\
