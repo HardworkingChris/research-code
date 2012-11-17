@@ -2,7 +2,7 @@ from pickle import load
 import os
 from sys import stderr, exit
 from numpy import array, diff, floor, zeros, log, mean, std,\
-        random, cumsum, histogram, where, ceil, arange, divide, exp
+        random, cumsum, histogram, where, ceil, arange, divide, exp, insert
 from brian import units
 from brian.units import second, volt
 from warnings import warn
@@ -372,7 +372,7 @@ def npss_ar(v, spiketrain, v_th, tau_m, w):
     return mean_slope,slopes_norm
 
 
-def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
+def firing_slope(mem, spiketrain, w=0.0001*second, dt=0.0001*second):
     '''
     Returns the mean value and a list containing each individual values of the
     slopes of the membrane potential at the time of firing of each spike.
@@ -383,10 +383,10 @@ def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
         Membrane potential as taken from brian.StateMonitor
     spiketrain : numpy array
         Spike times corresponding to the membrane potential data in `v`
-    dt : brian second (time)
-        Simulation time step (default 0.1 ms)
     w : brian second (time)
         Slope window
+    dt : brian second (time)
+        Simulation time step (default 0.1 ms)
 
     Returns
     -------
@@ -399,22 +399,22 @@ def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
     NOTE: Although the return values are untiless they represent volt/second
     values.
 
-    TODO: Make separate function that accepts a spike monitor, or dictionary
+    TODO:
+    - Make separate function that accepts a spike monitor, or dictionary
     and returns a dictionary of slope values, for brian compatibility.
     '''
 
-    if w < dt: w = dt
-    if len(spiketrain) < 2: return 0, array([])
-    # discard spikes that occurred too early
-    spiketrain = spiketrain[spiketrain > w]
-    min_interval = min(diff(spiketrain))*second
-    if w > min_interval:
-        warn("Slope window is larger than the smallest interval.\n%f > %f"
-                % (w, min_interval))
+    if w < dt:
+        w = dt
+    if len(spiketrain) < 2:
+        return 0, array([])
+    intervals = diff(spiketrain)
+    intervals = insert(intervals, 0, spiketrain[0])
+    windows = array([min(w, i*second-dt) for i in intervals])
     st_dt = spiketrain/dt
     st_dt = st_dt.astype(int)
-    w_dt = int(w/dt)
-    slopes = (mem[st_dt]-mem[st_dt-w_dt])*volt/w
+    w_dt = (windows/dt).astype(int)
+    slopes = (mem[st_dt]-mem[st_dt-w_dt])*volt/windows
     return mean(slopes), slopes
 
 
