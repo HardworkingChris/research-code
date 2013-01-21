@@ -404,8 +404,7 @@ def firing_slope(mem, spiketrain, w=0.0001*second, dt=0.0001*second):
     and returns a dictionary of slope values, for brian compatibility.
     '''
 
-    if w < dt:
-        w = dt
+    w = max(w, dt)
     if len(spiketrain) < 2:
         return 0, array([])
     intervals = diff(spiketrain)
