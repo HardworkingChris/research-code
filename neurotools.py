@@ -1,8 +1,9 @@
 from pickle import load
 import os
 from sys import stderr, exit
-from numpy import array, diff, floor, zeros, log, mean, std,\
-        random, cumsum, histogram, where, ceil, arange, divide, exp, insert
+from numpy import array, diff, floor, zeros, log, mean, std, shape,\
+        random, cumsum, histogram, where, ceil, arange, divide, exp, insert,\
+        count_nonzero, bitwise_and
 from brian import units
 from brian.units import second, volt
 from warnings import warn
@@ -668,9 +669,10 @@ def add_gauss_jitter(spiketrain,jitter,dt=0.0001*second):
     return jspiketrain
 
 
-def times_to_bin(spiketimes, dt=0.001*second, duration=None):
+def times_to_bin(spikes, dt=0.001*second, duration=None):
     '''
-    Converts spike trains into binary strings. Each bit is a bin of fixed width.
+    Converts a spike train into a binary strings. Each bit is a bin of
+    fixed width (dt).
     This function is useful for aligning a binary representation of a spike
     train to recordings of the respective membrane potential and for processing
     spike trains in binary format.
@@ -697,7 +699,13 @@ def times_to_bin(spiketimes, dt=0.001*second, duration=None):
         spikes in a bin is lost.
     '''
 
-    st = divide(spiketimes,dt)
+    if not len(spikes):
+        # no spikes
+        if duration is None:
+            return spikes
+        else:
+            return zeros(duration/dt)
+    st = divide(spikes,dt)
     st = st.astype('int')
     if duration is None:
         binlength = max(st)+1
@@ -709,8 +717,48 @@ def times_to_bin(spiketimes, dt=0.001*second, duration=None):
     if st[-1] > binlength:
         st = st[st < binlength]
     bintimes[st] = 1
-
     return bintimes
+
+
+def times_to_bin_multi(spikes, dt=0.001*second, duration=None):
+    spiketimes = []
+    if isinstance(spikes, dict):
+        spiketimes = array([st for st in spikes.itervalues()])
+    elif isinstance(spikes, list) or isinstance(spikes, array):
+        spiketimes = spikes
+    else:
+        raise TypeError('dictionary, list or array expected')
+    if duration is None:
+        # find the maximum value of all
+        duration = max(recursiveflat(spiketimes))+float(dt)
+        print duration
+    bintimes = array([times_to_bin(st, dt=dt, duration=duration)\
+                                                    for st in spiketimes])
+    return bintimes
+
+
+def PSTH(spikes, bin=0.001*second, dt=0.001*second, duration=None):
+    if bin < dt:
+        bin = dt
+    spiketimes = []
+    if isinstance(spikes, dict):
+        spiketimes = array([st for st in spikes.itervalues()])
+    elif isinstance(spikes, list) or isinstance(spikes, array):
+        spiketimes = array(spikes)
+    else:
+        raise TypeError('dictionary, list or array expected')
+    flatspikes = recursiveflat(spiketimes)
+    if duration is None:
+        print flatspikes
+        duration = max(flatspikes)+float(dt)
+    flatspikes = array(flatspikes)
+    nbins = int(duration/bin)
+    psth = zeros(nbins)
+    for b in arange(0, nbins, 1):
+        binspikes = bitwise_and(flatspikes >= b*bin,
+                flatspikes < (b+1)*bin)
+        psth[b] = count_nonzero(binspikes)
+    return psth
 
 
 def CV(spiketrain):
@@ -862,21 +910,20 @@ def unitrange(start, stop, step):
     Returns a list in the same manner as the Python built-in range, but works
     with brian units.
 
-    REMOVE exit() INSTANCES. LIBRARY SHOULD NOT CALL sys.exit() FUNCTION.
     '''
     if not isinstance(start, units.Quantity):
-        exit("unitrange: `start` argument is not a brian unit.\
-Use Python build-in or numpy.arange for generating dimensionless lists.")
+        raise TypeError("unitrange: `start` argument is not a brian unit."
+            "Use Python build-in range() or numpy.arange()")
     if not isinstance(stop, units.Quantity):
-        exit("unitrange: `stop` argument is not a brian unit.\
-Use Python build-in or numpy.arange for generating dimensionless lists.")
+        raise TypeError("unitrange: `stop` argument is not a brian unit."
+            "Use Python build-in range() or numpy.arange()")
     if not isinstance(step, units.Quantity):
-        exit("unitrange: `step` argument is not a brian unit.\
-Use Python build-in or numpy.arange for generating dimensionless lists.")
+        raise TypeError("unitrange: `step` argument is not a brian unit."
+            "Use Python build-in range() or numpy.arange()")
     if not start.has_same_dimensions(stop)\
         or not start.has_same_dimensions(step)\
         or not stop.has_same_dimensions(step):
-            exit("Dimension mismatch in `unitrange`")
+            raise TypeError("Dimension mismatch in `unitrange`")
 
     x = start
     retlist = []
@@ -902,3 +949,18 @@ def spike_period_hist(spiketimes, freq, duration, nbins=10, dt=0.0001*second):
             bins[i] += len(inbin)
     left = arange(0, 1, 1./nbins)
     return left, bins
+
+
+def recursiveflat(ndobject):
+    '''
+    Recursive function that flattens a n-dimensional object such as an array
+    or list. Must be accessible in the format ndobject[i].
+    Returns a 1-d list.
+    '''
+    if not len(ndobject):
+        return ndobject
+    elif shape(ndobject[0]) == ():
+        return ndobject
+    else:
+        return recursiveflat([item for row in ndobject for item in row])
+
