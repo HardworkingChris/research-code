@@ -749,7 +749,6 @@ def PSTH(spikes, bin=0.001*second, dt=0.001*second, duration=None):
         raise TypeError('dictionary, list or array expected')
     flatspikes = recursiveflat(spiketimes)
     if duration is None:
-        print flatspikes
         duration = max(flatspikes)+float(dt)
     flatspikes = array(flatspikes)
     nbins = int(duration/bin)
@@ -758,7 +757,7 @@ def PSTH(spikes, bin=0.001*second, dt=0.001*second, duration=None):
         binspikes = bitwise_and(flatspikes >= b*bin,
                 flatspikes < (b+1)*bin)
         psth[b] = count_nonzero(binspikes)
-    return psth
+    return arange(0*second, duration*second, bin), psth
 
 
 def CV(spiketrain):
