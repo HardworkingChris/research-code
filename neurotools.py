@@ -481,8 +481,8 @@ def sta(v, spiketrain, w, dt=0.0001*second):
     Calculates the Spike Triggered Average (currently only membrane potential)
     of the supplied data. Single neuron data only.
     This is the average waveform of the membrane potential in a period `w`
-    before firing. The individual windows are also returned as well as the
-    standard deviation.
+    before firing. The standard deviation and the individual windows are also
+    returned.
 
     Parameters
     ----------
@@ -509,24 +509,39 @@ def sta(v, spiketrain, w, dt=0.0001*second):
         windows
     '''
 
-    if (spiketrain.size <= 1):
+    if (len(spiketrain) <= 1):
         sta_avg = array([])
         sta_std = array([])
         sta_wins = array([])
         return sta_avg, sta_std, sta_wins
 
-    w_d = w/dt # dimensionless window length (binned at 0.1 ms)
-    sta_wins = zeros((spiketrain.size,w_d))
-    for i in range(spiketrain.size):
-        t = spiketrain[i]*second/dt
-        if (w_d < t):
-            w_start = t-w_d # window start position index
+    w_d = int(w/dt) # window length in dt
+    sta_wins = zeros((len(spiketrain),w_d))
+    for i, st in enumerate(spiketrain):
+        t_d = int(st/dt)
+        if (w_d < t_d):
+            try:
+                w_start = t_d-w_d # window start position index
+                w_end = t_d # window end index
+                sta_wins[i,:] = v[w_start:w_end]
         else:
-            continue # change this
-
-        w_end = t # window end index
-        sta_wins[i,:] = v[w_start:w_end]
-
+            '''
+            We have two options here:
+            (a) drop the spike
+            (b) pad with zeroes
+            --
+            (a) would make the size of the `wins` matrix inconsistent with
+            the number of spikes and one would expect the rows to match
+            (b) can skew the average and variance calculations
+            --
+            Currently going with (b): if the number of spikes is small enough
+            that one would skew the stats, I won't be looking at the stats
+            anyway.
+            '''
+            w_start = 0
+            w_end = t_d
+            curwin = append(zeros(w_d-t_d), v[:t_d])
+            sta_wins[i,:] = curwin
     sta_avg = mean(sta_wins,0)
     sta_std = std(sta_wins,0)
 
@@ -731,13 +746,20 @@ def times_to_bin_multi(spikes, dt=0.001*second, duration=None):
     if duration is None:
         # find the maximum value of all
         duration = max(recursiveflat(spiketimes))+float(dt)
-        print duration
     bintimes = array([times_to_bin(st, dt=dt, duration=duration)\
                                                     for st in spiketimes])
     return bintimes
 
 
 def PSTH(spikes, bin=0.001*second, dt=0.001*second, duration=None):
+    '''
+    Similar to times_to_bin{_multi} though it doesn't discard multiple spikes
+    in a single bin. Allows plotting of the PSTH. Returns the times of the bins
+    and the number of spikes in each bin (much like a histogram).
+
+    NB: Entire function can be replaced by a simple call to histogram with an
+    appropriate bin size.
+    '''
     if bin < dt:
         bin = dt
     spiketimes = []
