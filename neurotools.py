@@ -520,10 +520,9 @@ def sta(v, spiketrain, w, dt=0.0001*second):
     for i, st in enumerate(spiketrain):
         t_d = int(st/dt)
         if (w_d < t_d):
-            try:
-                w_start = t_d-w_d # window start position index
-                w_end = t_d # window end index
-                sta_wins[i,:] = v[w_start:w_end]
+            w_start = t_d-w_d # window start position index
+            w_end = t_d # window end index
+            sta_wins[i,:] = v[w_start:w_end]
         else:
             '''
             We have two options here:
