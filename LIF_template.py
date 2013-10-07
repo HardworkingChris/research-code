@@ -12,7 +12,16 @@ tau_mem = 10*msecond
 N_in = 10
 f_in = 50*Hz
 DV_s = 2.5*mV
-inp = PoissonGroup(N_in, f_in)
+
+def inputRate(t):
+    if t < 500*ms:
+        return 50*Hz
+    elif 500*ms <= t < 1000*ms:
+        return 300*Hz
+    else:
+        return 50*Hz
+
+inp = PoissonGroup(N_in, rates=inputRate)
 nrns = NeuronGroup(N_sims, lif_eq, threshold=V_th, reset=V_reset,\
         refractory=t_refr)
 con = Connection(inp, nrns, 'V')
@@ -27,13 +36,13 @@ for n in range(N_sims):
     f_out = len(st.spiketimes[n])/duration
     print "Neuron %i firing rate: %s" % (n, f_out)
 
-#subplot(2,1,1)
-#raster_plot(inp_mon)
-#subplot(2,1,2)
-#plot(mem.times,mem[0],mem.times,ones(len(mem.times))*V_th)
-#title('Membrane voltage trace of neuron 0')
-#xlabel("Time (seconds)")
-#ylabel("Volts")
-#show()
+subplot(2,1,1)
+raster_plot(inp_mon)
+subplot(2,1,2)
+plot(mem.times,mem[0],mem.times,ones(len(mem.times))*V_th)
+title('Membrane voltage trace of neuron 0')
+xlabel("Time (seconds)")
+ylabel("Volts")
+show()
 
 

@@ -77,7 +77,7 @@ if __name__=='__main__':
             isi = diff(nrnspikes)
             mean_isi[nrn] = mean(isi)
             std_isi[nrn] = std(isi)
-    
+
     f_out = numspikes/duration
     cv = std_isi/mean_isi
     variability = array([mean_isi, cv])
@@ -98,5 +98,5 @@ if __name__=='__main__':
     ylabel('CV')
     show()
 
-        
+
 

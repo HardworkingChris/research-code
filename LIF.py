@@ -7,7 +7,7 @@ N_sims = 1
 
 lif_eq = ['dV/dt = (V_rest-V)/tau_mem : volt']
 V_rest = 0*mV
-V_reset = 13*mV
+V_reset = 0*mV
 V_th = 15*mV
 t_refr = 2*ms
 tau_mem = 10*msecond
@@ -36,5 +36,6 @@ print "Mean membrane potential:\t",mean(mem[0])*volt
 plot(mem.times,mem[0],mem.times,ones(len(mem.times))*V_th)
 title('Membrane')
 show()
+
 
 

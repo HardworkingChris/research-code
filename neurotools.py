@@ -1,9 +1,8 @@
 from pickle import load
 import os
-from sys import stderr, exit
 from numpy import array, diff, floor, zeros, log, mean, std, shape,\
-        random, cumsum, histogram, where, ceil, arange, divide, exp, insert,\
-        count_nonzero, bitwise_and
+        random, cumsum, histogram, where, arange, divide, exp, insert,\
+        count_nonzero, bitwise_and, append
 from brian import units
 from brian.units import second, volt
 from warnings import warn
@@ -102,8 +101,8 @@ class SynchronousInputGroup:
         before returning a new spike time. This can be used to generate
         n spike trains with the same base spike times, but with jitter applied
         to each spike.
-        The n spike trains generated are equivalent to having a series of 
-        Gaussian pulse packets centred on each base time (t) with 
+        The n spike trains generated are equivalent to having a series of
+        Gaussian pulse packets centred on each base time (t) with
         spread = jitter.
 
         Parameters
@@ -111,7 +110,7 @@ class SynchronousInputGroup:
         n : int
             Number of synchronous inputs. This defines the number of times
             the same base time (t) will used by the generator.
-        
+
         rate : brian hertz (frequency)
             The average spike rate
 
@@ -343,12 +342,12 @@ def npss_ar(v, spiketrain, v_th, tau_m, w):
     slopes = mean(diff(wins,axis=1),1)
     spiketime_d = int(spiketrain[0]*second/(0.0001*second))
     v_reset = v[spiketime_d+1]*mV
-    print "reset: ",v_reset
+    #print("reset: ",v_reset
     isis = diff(spiketrain)
     isis = isis*second/(0.0001*second)
     # lower bound calculation
     low_bound = (v_th-v_reset)/isis
-    print low_bound[2],"= (",v_th,"-",v_reset,")/",isis[2]
+    #print low_bound[2],"= (",v_th,"-",v_reset,")/",isis[2]
     # upper bound calculation
     t_decay = isis-w*second/(0.0001*second)
     t_decay = array(t_decay,dtype=int)
@@ -457,7 +456,7 @@ def norm_firing_slope(mem, spiketrain, th, tau,
     mslope, slopes = firing_slope(mem, spiketrain, dt, w)
     first_spike = spiketrain[0]
     first_spike_index = int(first_spike/dt)
-    reset = mem[first_spike_index+1]
+    reset = mem[first_spike_index+1]*volt
     slope_max = (th-reset)/w
     '''
     Minimum slope is ISI dependent and requires time constant to calculate
@@ -467,12 +466,12 @@ def norm_firing_slope(mem, spiketrain, th, tau,
     lowstart = reset + min_input * (1-exp(-(ISIs-w)/tau))
     slope_min = (th - lowstart)/w
     slopes_normed = (slopes[1:] - slope_min)/(slope_max - slope_min)
-    if min(slopes_normed) < 0 or max(slopes_normed) > 1:
-        import matplotlib as mpl
-        mpl.pyplot.plot(mem)
-        mpl.pyplot.title("normalised slopes [%f, %f]" % (min(slopes_normed),
-            max(slopes_normed)))
-        mpl.pyplot.show()
+    #if min(slopes_normed) < 0 or max(slopes_normed) > 1:
+    #    import matplotlib as mpl
+    #    mpl.pyplot.plot(mem)
+    #    mpl.pyplot.title("normalised slopes [%f, %f]" % (min(slopes_normed),
+    #        max(slopes_normed)))
+    #    mpl.pyplot.show()
     return mean(slopes_normed), slopes_normed
 
 

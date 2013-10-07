@@ -30,6 +30,7 @@ sigma_in = 100*ms
 nrns = NeuronGroup(N_nrns,lif_eq,threshold=V_th,reset=V_reset,refractory=t_refr)
 input_spikes = []
 for st in pulse_times:
+    print(st)
     input_spikes.extend(PulsePacket(t=st,n=N_in,sigma=sigma_in).spiketimes)
 inp = SpikeGeneratorGroup(N_in, input_spikes)
 con = Connection(inp, nrns, 'V')
