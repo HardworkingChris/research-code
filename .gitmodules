@@ -1,0 +1,3 @@
+[submodule "brian-ou-lif"]
+	path = OU_LIF
+	url = git@github.com:achilleas-k/brian-ou-lif.git
