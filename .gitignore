@@ -1,4 +1,19 @@
+# vim swp and python pyc
 *.swp
 *.pyc
+
+# data files
 *.data
+*.npz
+*.png
+*.pdf
+
+# data dirs
+*figures*/
+data/
+
+# tmp dir
+tmp/
+
+.directory
 
