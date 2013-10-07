@@ -2,15 +2,16 @@
 *.swp
 *.pyc
 
-# data files
+# data
 *.data
 *.npz
+data/
+
+# figures
+*figures*/
 *.png
 *.pdf
-
-# data dirs
-*figures*/
-data/
+*.eps
 
 # tmp dir
 tmp/
