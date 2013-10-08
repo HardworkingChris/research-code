@@ -17,4 +17,5 @@ data/
 tmp/
 
 .directory
+.idea
 
