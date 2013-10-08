@@ -6,6 +6,7 @@
 *.data
 *.npz
 *.zip
+*.pkl
 data/
 
 # figures
