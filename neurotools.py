@@ -1,10 +1,12 @@
 from pickle import load
 import os
-from numpy import array, diff, floor, zeros, log, mean, std, shape,\
-        random, cumsum, histogram, where, arange, divide, exp, insert,\
-        count_nonzero, bitwise_and, append
+from numpy import array, diff, floor, zeros, log, mean, std, shape, \
+    random, cumsum, histogram, where, arange, divide, exp, insert, \
+    count_nonzero, bitwise_and, append
+import random as rnd
 from brian import units
-from brian.units import second, volt
+from brian.units import second, volt, msecond
+from brian import NeuronGroup, PoissonGroup, PulsePacket, SpikeGeneratorGroup
 from warnings import warn
 
 
@@ -47,7 +49,6 @@ class SynchronousInputGroup:
 
     def __call__(self):
         return self._gen
-
 
     def configure_generators(self, n, rate, sync, jitter, dt=0.0001*second):
         '''
@@ -92,7 +93,6 @@ class SynchronousInputGroup:
             spiketrains.append(self.sync_inp_gen(1, rate, 0*second, dt))
 
         return spiketrains
-
 
     def sync_inp_gen(self, n, rate, jitter, dt=0.0001*second):
         '''
@@ -145,7 +145,7 @@ class SynchronousInputGroup:
 
 
 def calibrate_frequencies(nrngrp, input_configs, f_out):
-    pass
+
 
 
 def loadsim(simname):
@@ -332,50 +332,6 @@ def npss(v, spiketrain, v_th, w, dt=0.0001*second):
     return mean_slope, slopes_norm
 
 
-def npss_ar(v, spiketrain, v_th, tau_m, w):
-    '''
-    BROKEN!!!
-    '''
-    warn("npss_ar: BROKEN! FIX ME!")
-    return 0, [0]
-    if (spiketrain.size <= 1):
-        return 0,[0]
-
-    (m,s,wins) = sta(v, spiketrain, w)
-    wins[:,-1] = v_th
-    # remove first window
-    wins = wins[1:,:]
-    slopes = mean(diff(wins,axis=1),1)
-    spiketime_d = int(spiketrain[0]*second/(0.0001*second))
-    v_reset = v[spiketime_d+1]*mV
-    #print("reset: ",v_reset
-    isis = diff(spiketrain)
-    isis = isis*second/(0.0001*second)
-    # lower bound calculation
-    low_bound = (v_th-v_reset)/isis
-    #print low_bound[2],"= (",v_th,"-",v_reset,")/",isis[2]
-    # upper bound calculation
-    t_decay = isis-w*second/(0.0001*second)
-    t_decay = array(t_decay,dtype=int)
-    t_decay_max = max(t_decay)
-    decay_max = v_reset*\
-            exp(-(array(range(t_decay_max))/(tau_m/(0.0001*second))))
-    high_start = decay_max[t_decay-1]
-    high_bound = (v_th/volt-high_start)/(w/(0.0001*second))
-    slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
-    slopes_norm[slopes_norm < 0] = 0
-    overmax = (slopes_norm > 1).nonzero()
-    '''
-    if (size(overmax) > 0):
-        print "Normalised slope exceeds 1 in",size(overmax),"cases:"
-        print "H bound:",high_bound[overmax]
-        print "L bound:",low_bound[overmax]
-        print "Slopes :",slopes[overmax]
-        print "Norm sl:",slopes_norm[overmax]
-        print "ISIs   :",isis[overmax]
-    '''
-    mean_slope = mean(slopes_norm)
-    return mean_slope,slopes_norm
 
 
 def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
@@ -606,7 +562,7 @@ def sync_inp(n, rate, s, sigma, dura, dt=0.0001*second):
     return spiketrains
 
 
-def poisson_spikes(dura,rate,dt=0.0001*second):
+def poisson_spikes(dura, rate, dt=0.0001*second):
     '''
     Generates a single spike train with exponentially distributed inter-spike
     intervals, i.e., a realisation of a Poisson process.
@@ -991,3 +947,49 @@ def recursiveflat(ndobject):
     else:
         return recursiveflat([item for row in ndobject for item in row])
 
+
+
+#def npss_ar(v, spiketrain, v_th, tau_m, w):
+#    '''
+#    BROKEN!!!
+#    '''
+#    warn("npss_ar: BROKEN! FIX ME!")
+#    return 0, [0]
+#    if (spiketrain.size <= 1):
+#        return 0,[0]
+#
+#    (m,s,wins) = sta(v, spiketrain, w)
+#    wins[:,-1] = v_th
+#    # remove first window
+#    wins = wins[1:,:]
+#    slopes = mean(diff(wins,axis=1),1)
+#    spiketime_d = int(spiketrain[0]*second/(0.0001*second))
+#    v_reset = v[spiketime_d+1]*mV
+#    #print("reset: ",v_reset
+#    isis = diff(spiketrain)
+#    isis = isis*second/(0.0001*second)
+#    # lower bound calculation
+#    low_bound = (v_th-v_reset)/isis
+#    #print low_bound[2],"= (",v_th,"-",v_reset,")/",isis[2]
+#    # upper bound calculation
+#    t_decay = isis-w*second/(0.0001*second)
+#    t_decay = array(t_decay,dtype=int)
+#    t_decay_max = max(t_decay)
+#    decay_max = v_reset*\
+#            exp(-(array(range(t_decay_max))/(tau_m/(0.0001*second))))
+#    high_start = decay_max[t_decay-1]
+#    high_bound = (v_th/volt-high_start)/(w/(0.0001*second))
+#    slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
+#    slopes_norm[slopes_norm < 0] = 0
+#    overmax = (slopes_norm > 1).nonzero()
+#    '''
+#    if (size(overmax) > 0):
+#        print "Normalised slope exceeds 1 in",size(overmax),"cases:"
+#        print "H bound:",high_bound[overmax]
+#        print "L bound:",low_bound[overmax]
+#        print "Slopes :",slopes[overmax]
+#        print "Norm sl:",slopes_norm[overmax]
+#        print "ISIs   :",isis[overmax]
+#    '''
+#    mean_slope = mean(slopes_norm)
+#    return mean_slope,slopes_norm
