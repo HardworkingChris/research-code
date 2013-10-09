@@ -374,7 +374,7 @@ def npss_ar(v, spiketrain, v_th, tau_m, w):
     return mean_slope,slopes_norm
 
 
-def firing_slope(mem, spiketrain, w=0.0001*second, dt=0.0001*second):
+def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
     """
     Returns the mean value and a list containing each individual values of the
     slopes of the membrane potential at the time of firing of each spike.
@@ -420,7 +420,7 @@ def firing_slope(mem, spiketrain, w=0.0001*second, dt=0.0001*second):
 
 
 def norm_firing_slope(mem, spiketrain, th, tau,
-        dt=0.0001*second, w=0.0001*second):
+                      dt=0.0001*second, w=0.0001*second):
     """
     This function will replace npss for calculating the normalised slope.
     It doesn't use the STA to calculate slopes, which should be faster.
@@ -942,11 +942,11 @@ def unitrange(start, stop, step):
             "Use Python build-in range() or numpy.arange()")
     if not isinstance(step, units.Quantity):
         raise TypeError("unitrange: `step` argument is not a brian unit."
-            "Use Python build-in range() or numpy.arange()")
-    if not start.has_same_dimensions(stop)\
-        or not start.has_same_dimensions(step)\
-        or not stop.has_same_dimensions(step):
-            raise TypeError("Dimension mismatch in `unitrange`")
+                        "Use Python build-in range() or numpy.arange()")
+    if not start.has_same_dimensions(stop) \
+            or not start.has_same_dimensions(step) \
+            or not stop.has_same_dimensions(step):
+        raise TypeError("Dimension mismatch in `unitrange`")
 
     x = start
     retlist = []
@@ -958,11 +958,11 @@ def unitrange(start, stop, step):
 
 def spike_period_hist(spiketimes, freq, duration, nbins=10, dt=0.0001*second):
     dt = float(dt)
-    period = 1/freq # in ms
-    period = int(period/dt) # in timesteps
-    binwidth = period/nbins # segment period into 10 bins
+    period = 1/freq  # in ms
+    period = int(period/dt)  # in timesteps
+    binwidth = period/nbins  # segment period into 10 bins
     bins = zeros(nbins)
-    nper = int((duration/dt)/period) # number of periods
+    nper = int((duration/dt)/period)  # number of periods
     st_a = array(spiketimes)/dt
     for i in range(len(bins)):
         for p in range(nper):
@@ -975,11 +975,11 @@ def spike_period_hist(spiketimes, freq, duration, nbins=10, dt=0.0001*second):
 
 
 def recursiveflat(ndobject):
-    '''
+    """
     Recursive function that flattens a n-dimensional object such as an array
     or list. Must be accessible in the format ndobject[i].
     Returns a 1-d list.
-    '''
+    """
     if not len(ndobject):
         return ndobject
     elif shape(ndobject[0]) == ():
