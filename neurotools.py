@@ -10,6 +10,33 @@ from brian import NeuronGroup, PoissonGroup, PulsePacket, SpikeGeneratorGroup
 from warnings import warn
 
 
+# TODO: Compare genInputGroups with SynchronousInputGroup
+
+def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.0001*ms):
+    N_sync = int(N_in*S_in)
+    N_rand = N_in-N_sync
+    syncGroup = PoissonGroup(0, 0)  # dummy nrngrp
+    randGroup = PoissonGroup(0, 0)
+    if N_sync:
+        pulse_intervals = []
+        while sum(pulse_intervals)*second < duration:
+            interval = rnd.expovariate(f_in)+dt
+            pulse_intervals.append(interval)
+        pulse_times = cumsum(pulse_intervals[:-1])  # ignore last one
+        sync_spikes = []
+        pp = PulsePacket(0*second, 1, 0*second)  # dummy pp
+        for pt in pulse_times:
+            try:
+                pp.generate(t=pt*second, n=N_sync, sigma=sigma*msecond)
+                sync_spikes.extend(pp.spiketimes)
+            except ValueError:
+                continue
+        syncGroup = SpikeGeneratorGroup(N=N_sync, spiketimes=sync_spikes)
+    if N_rand:
+        randGroup = PoissonGroup(N_rand, rates=f_in)
+    return syncGroup, randGroup
+
+
 class SynchronousInputGroup:
     '''
     Synchronous input generator.
