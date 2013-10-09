@@ -288,6 +288,8 @@ def npss(v, spiketrain, v_th, w, dt=0.0001*second):
         The individual npss values for each spike
 
     '''
+
+    warn('Using deprecated function npss()')
     if (spiketrain.size <= 1):
         return 0,[0]
 
@@ -373,7 +375,7 @@ def npss_ar(v, spiketrain, v_th, tau_m, w):
 
 
 def firing_slope(mem, spiketrain, w=0.0001*second, dt=0.0001*second):
-    '''
+    """
     Returns the mean value and a list containing each individual values of the
     slopes of the membrane potential at the time of firing of each spike.
 
@@ -402,7 +404,7 @@ def firing_slope(mem, spiketrain, w=0.0001*second, dt=0.0001*second):
     TODO:
     - Make separate function that accepts a spike monitor, or dictionary
     and returns a dictionary of slope values, for brian compatibility.
-    '''
+    """
 
     w = max(w, dt)
     if len(spiketrain) < 2:
@@ -419,7 +421,7 @@ def firing_slope(mem, spiketrain, w=0.0001*second, dt=0.0001*second):
 
 def norm_firing_slope(mem, spiketrain, th, tau,
         dt=0.0001*second, w=0.0001*second):
-    '''
+    """
     This function will replace npss for calculating the normalised slope.
     It doesn't use the STA to calculate slopes, which should be faster.
 
@@ -448,11 +450,13 @@ def norm_firing_slope(mem, spiketrain, th, tau,
 
     NOTE: Although the return values are untiless they represent volt/second
     values.
-    '''
-    if w < dt: w = dt
+    """
+
+    if w < dt:
+        w = dt
     if len(spiketrain) < 2:
         return 0, array([])
-    spiketrain = spiketrain[spiketrain > w] # discard spikes that occurred too early
+    spiketrain = spiketrain[spiketrain > w]  # discard spikes that occurred too early
     mslope, slopes = firing_slope(mem, spiketrain, dt, w)
     first_spike = spiketrain[0]
     first_spike_index = int(first_spike/dt)
