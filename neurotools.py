@@ -144,6 +144,10 @@ class SynchronousInputGroup:
             yield t + jitt_variate
 
 
+def calibrate_frequencies(nrngrp, input_configs, f_out):
+    pass
+
+
 def loadsim(simname):
     '''
     Takes a simulation name and loads the data associated with the simulation.
@@ -194,7 +198,7 @@ def loadsim(simname):
     return mem, spiketrain, stm
 
 
-def slope_distribution(v,w,rem_zero=True):
+def slope_distribution(v, w, rem_zero=True):
     '''
     Calculates the distribution of membrane potential slope values.
 
@@ -230,7 +234,7 @@ def slope_distribution(v,w,rem_zero=True):
     return dist
 
 
-def positive_slope_distribution(v,w):
+def positive_slope_distribution(v, w):
     '''
     Calculates the distribution of positive membrane potential slope values.
 
@@ -333,7 +337,7 @@ def npss_ar(v, spiketrain, v_th, tau_m, w):
     BROKEN!!!
     '''
     warn("npss_ar: BROKEN! FIX ME!")
-    return 0,[0]
+    return 0, [0]
     if (spiketrain.size <= 1):
         return 0,[0]
 
