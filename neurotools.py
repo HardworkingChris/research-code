@@ -168,49 +168,46 @@ def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
         randGroup = PoissonGroup(N_rand, rates=f_in)
     return syncGroup, randGroup
 
+def run_calib(nrngrp, N_in, f_in, w_in, input_configs):
+    calib_duration = 50*msecond
+    nrngrp.V = 0*volt  # assumes V state variable - TODO: guess alternatives
+    calib_network = Network(nrngrp)
+    syncConns = []
+    randConns = []
+    for idx, (sync, jitter) in enumerate(input_configs):
+        sg, rg = genInputGroups(N_in, f_out, sync, jitter, calib_duration)
+        if len(sg):
+            sConn = Connection(sg, nrngrp[idx], state='V', weight=w_in)
+            syncConns.append(sConn)
+            calib_network.add(sg, sConn)
+        if len(rg):
+            rConn = Connection(rg, nrngrp[idx], state='V', weight=w_in)
+            randConns.append(rConn)
+            calib_network.add(rg, rConn)
+    st_mon = SpikeMonitor(nrngrp)
+    calib_network.add(st_mon)
+    calib_network.run(calib_duration)
+    actual_f_out = array([1.0*len(spikes)/calib_duration\
+                          for spikes in st_mon.spiketimes.itervalues()])
+    # del probably unnecessary
+    del(calib_network, syncConns, randConns, st_mon)
+    return actual_f_out
 
 def calibrate_frequencies(nrngrp, N_in, w_in, input_configs, f_out):
-    calib_duration = 50*msecond
+    desired_freq = f_out
     f_in = ones(len(nrngrp))*f_out
+    actual_freq = run_calib(nrngrp, N_in, f_in, w_in, input_configs)
+    found_f_in = abs(desired_freq-actual_freq) < 2  # 2 Hz margin
+    dout_din = actual_freq/f_in
     print("Calibrating ...")
-    while True:
-        print("Trying f_in:")
-        print(f_in)
-        nrngrp.V = 0*volt
-        calib_network = Network(nrngrp)
-        syncConns = []
-        randConns = []
-        for idx, (sync, jitter) in enumerate(input_configs):
-            sg, rg = genInputGroups(N_in, f_out, sync, jitter, calib_duration)
-            if len(sg):
-                sConn = Connection(sg, nrngrp[idx], state='V', weight=w_in)
-                syncConns.append(sConn)
-                calib_network.add(sg, sConn)
-            if len(rg):
-                rConn = Connection(rg, nrngrp[idx], state='V', weight=w_in)
-                randConns.append(rConn)
-                calib_network.add(rg, rConn)
-        st_mon = SpikeMonitor(nrngrp)
-        calib_network.add(st_mon)
-        calib_network.run(calib_duration)
-        actual_f_out = array([1.0*len(spikes)/calib_duration\
-                              for spikes in st_mon.spiketimes.itervalues()])
-        print("f_out:")
-        print(actual_f_out)
-        f_out_error = f_out-actual_f_out
-        print("error:")
-        print(f_out_error)
-        print("-----")
-        if all(abs(f_out_error) < 2*Hz):
-            break
-        else:
-            # f_out_correction: 1 if desired > actual, -1 if actual < des, 0 otws
-            for idx, foe in enumerate(f_out_error):
-                if foe > 2:
-                    f_in[idx] += 5
-                elif foe < 2:
-                    f_in[idx] -= 5
-        del(calib_network, syncConns, randConns, st_mon)
+    while not all(found_f_in):
+        freq_error = desired_freq-actual_freq
+        for idx, foe in enumerate(f_out_error):
+            if foe > 2:
+                f_in[idx] += 5
+            elif foe < 2:
+                f_in[idx] -= 5
+        actual_freq = run_calib(nrngrp, N_in, f_in, w_in, input_configs)
     return f_in
 
 
