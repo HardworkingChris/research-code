@@ -1,41 +1,14 @@
+from brian import *
 from pickle import load
 import os
 from numpy import array, diff, floor, zeros, log, mean, std, shape, \
     random, cumsum, histogram, where, arange, divide, exp, insert, \
     count_nonzero, bitwise_and, append
 import random as rnd
-from brian import units
-from brian.units import second, volt, msecond
-from brian import NeuronGroup, PoissonGroup, PulsePacket, SpikeGeneratorGroup
 from warnings import warn
 
 
 # TODO: Compare genInputGroups with SynchronousInputGroup
-
-def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.0001*ms):
-    N_sync = int(N_in*S_in)
-    N_rand = N_in-N_sync
-    syncGroup = PoissonGroup(0, 0)  # dummy nrngrp
-    randGroup = PoissonGroup(0, 0)
-    if N_sync:
-        pulse_intervals = []
-        while sum(pulse_intervals)*second < duration:
-            interval = rnd.expovariate(f_in)+dt
-            pulse_intervals.append(interval)
-        pulse_times = cumsum(pulse_intervals[:-1])  # ignore last one
-        sync_spikes = []
-        pp = PulsePacket(0*second, 1, 0*second)  # dummy pp
-        for pt in pulse_times:
-            try:
-                pp.generate(t=pt*second, n=N_sync, sigma=sigma*msecond)
-                sync_spikes.extend(pp.spiketimes)
-            except ValueError:
-                continue
-        syncGroup = SpikeGeneratorGroup(N=N_sync, spiketimes=sync_spikes)
-    if N_rand:
-        randGroup = PoissonGroup(N_rand, rates=f_in)
-    return syncGroup, randGroup
-
 
 class SynchronousInputGroup:
     '''
@@ -171,8 +144,74 @@ class SynchronousInputGroup:
             yield t + jitt_variate
 
 
-def calibrate_frequencies(nrngrp, input_configs, f_out):
+def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
+    N_sync = int(N_in*S_in)
+    N_rand = N_in-N_sync
+    syncGroup = PoissonGroup(0, 0)  # dummy nrngrp
+    randGroup = PoissonGroup(0, 0)
+    if N_sync:
+        pulse_intervals = []
+        while sum(pulse_intervals)*second < duration:
+            interval = rnd.expovariate(f_in)+dt
+            pulse_intervals.append(interval)
+        pulse_times = cumsum(pulse_intervals[:-1])  # ignore last one
+        sync_spikes = []
+        pp = PulsePacket(0*second, 1, 0*second)  # dummy pp
+        for pt in pulse_times:
+            try:
+                pp.generate(t=pt*second, n=N_sync, sigma=sigma*msecond)
+                sync_spikes.extend(pp.spiketimes)
+            except ValueError:
+                continue
+        syncGroup = SpikeGeneratorGroup(N=N_sync, spiketimes=sync_spikes)
+    if N_rand:
+        randGroup = PoissonGroup(N_rand, rates=f_in)
+    return syncGroup, randGroup
 
+
+def calibrate_frequencies(nrngrp, N_in, w_in, input_configs, f_out):
+    calib_duration = 50*msecond
+    f_in = ones(len(nrngrp))*f_out
+    print("Calibrating ...")
+    while True:
+        print("Trying f_in:")
+        print(f_in)
+        nrngrp.V = 0*volt
+        calib_network = Network(nrngrp)
+        syncConns = []
+        randConns = []
+        for idx, (sync, jitter) in enumerate(input_configs):
+            sg, rg = genInputGroups(N_in, f_out, sync, jitter, calib_duration)
+            if len(sg):
+                sConn = Connection(sg, nrngrp[idx], state='V', weight=w_in)
+                syncConns.append(sConn)
+                calib_network.add(sg, sConn)
+            if len(rg):
+                rConn = Connection(rg, nrngrp[idx], state='V', weight=w_in)
+                randConns.append(rConn)
+                calib_network.add(rg, rConn)
+        st_mon = SpikeMonitor(nrngrp)
+        calib_network.add(st_mon)
+        calib_network.run(calib_duration)
+        actual_f_out = array([1.0*len(spikes)/calib_duration\
+                              for spikes in st_mon.spiketimes.itervalues()])
+        print("f_out:")
+        print(actual_f_out)
+        f_out_error = f_out-actual_f_out
+        print("error:")
+        print(f_out_error)
+        print("-----")
+        if all(abs(f_out_error) < 2*Hz):
+            break
+        else:
+            # f_out_correction: 1 if desired > actual, -1 if actual < des, 0 otws
+            for idx, foe in enumerate(f_out_error):
+                if foe > 2:
+                    f_in[idx] += 5
+                elif foe < 2:
+                    f_in[idx] -= 5
+        del(calib_network, syncConns, randConns, st_mon)
+    return f_in
 
 
 def loadsim(simname):
@@ -357,8 +396,6 @@ def npss(v, spiketrain, v_th, w, dt=0.0001*second):
 
     mean_slope = mean(slopes_norm)
     return mean_slope, slopes_norm
-
-
 
 
 def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
