@@ -6,6 +6,7 @@ from numpy import array, diff, floor, zeros, log, mean, std, shape, \
     count_nonzero, bitwise_and, append
 import random as rnd
 from warnings import warn
+import gc
 
 
 # TODO: Compare genInputGroups with SynchronousInputGroup
@@ -145,6 +146,8 @@ class SynchronousInputGroup:
 
 
 def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
+    print("Generating inputs:\nN: %i, fi: %f, sync: %f, jitt: %f" % (
+        N_in, f_in, S_in, sigma))
     N_sync = int(N_in*S_in)
     N_rand = N_in-N_sync
     syncGroup = PoissonGroup(0, 0)  # dummy nrngrp
@@ -152,30 +155,45 @@ def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
     if N_sync:
         pulse_intervals = []
         while sum(pulse_intervals)*second < duration:
-            interval = rnd.expovariate(f_in)+dt
+            interval = rnd.expovariate(f_in)+float(dt)
             pulse_intervals.append(interval)
         pulse_times = cumsum(pulse_intervals[:-1])  # ignore last one
         sync_spikes = []
         pp = PulsePacket(0*second, 1, 0*second)  # dummy pp
         for pt in pulse_times:
-            try:
-                pp.generate(t=pt*second, n=N_sync, sigma=sigma*msecond)
-                sync_spikes.extend(pp.spiketimes)
-            except ValueError:
-                continue
+            if sigma > 0:
+                try:
+                    pp.generate(t=pt*second, n=N_sync, sigma=sigma*msecond)
+                    sync_spikes.extend(pp.spiketimes)
+                except ValueError:
+                    continue
+            else:
+                for idx in range(N_sync):
+                    sync_spikes.append((idx, pt*second))
         syncGroup = SpikeGeneratorGroup(N=N_sync, spiketimes=sync_spikes)
     if N_rand:
         randGroup = PoissonGroup(N_rand, rates=f_in)
     return syncGroup, randGroup
 
-def run_calib(nrngrp, N_in, f_in, w_in, input_configs):
+def _run_calib(nrndef, N_in, f_in, w_in, input_configs, active_idx):
+    clear(True)
+    gc.collect()
+    eqs = nrndef['eqs']
+    V_th = nrndef['V_th']
+    refr = nrndef['refr']
+    reset = nrndef['reset']
+    nrngrp = NeuronGroup(len(input_configs), eqs, threshold='V>V_th',
+                         refractory=refr,
+                         reset='V=reset')
     calib_duration = 50*msecond
-    nrngrp.V = 0*volt  # assumes V state variable - TODO: guess alternatives
+    nrngrp.V = reset  # assumes V state variable - TODO: guess alternatives
     calib_network = Network(nrngrp)
     syncConns = []
     randConns = []
-    for idx, (sync, jitter) in enumerate(input_configs):
-        sg, rg = genInputGroups(N_in, f_out, sync, jitter, calib_duration)
+    print active_idx
+    active_configs = array(input_configs)[active_idx]
+    for idx, (sync, jitter) in zip(active_idx, active_configs):
+        sg, rg = genInputGroups(N_in, f_in[idx], sync, jitter, calib_duration)
         if len(sg):
             sConn = Connection(sg, nrngrp[idx], state='V', weight=w_in)
             syncConns.append(sConn)
@@ -186,28 +204,59 @@ def run_calib(nrngrp, N_in, f_in, w_in, input_configs):
             calib_network.add(rg, rConn)
     st_mon = SpikeMonitor(nrngrp)
     calib_network.add(st_mon)
+    print(">")
     calib_network.run(calib_duration)
     actual_f_out = array([1.0*len(spikes)/calib_duration\
                           for spikes in st_mon.spiketimes.itervalues()])
     # del probably unnecessary
-    del(calib_network, syncConns, randConns, st_mon)
+    # del(calib_network, syncConns, randConns, st_mon)
     return actual_f_out
 
-def calibrate_frequencies(nrngrp, N_in, w_in, input_configs, f_out):
-    desired_freq = f_out
-    f_in = ones(len(nrngrp))*f_out
-    actual_freq = run_calib(nrngrp, N_in, f_in, w_in, input_configs)
-    found_f_in = abs(desired_freq-actual_freq) < 2  # 2 Hz margin
-    dout_din = actual_freq/f_in
+def _calc_rate_of_change(X, Y):
+    if all(Y > 0):
+        return X/Y
+    gtz = Y>0
+    ret = zeros(len(X))
+    ret[gtz] = X[gtz]/Y[gtz]
+    ret[~gtz] = X[~gtz]
+    return ret
+
+def calibrate_frequencies(nrndef, N_in, w_in, input_configs, f_out):
+    '''
+    Calculates the input frequency required to produce the desired output rate
+    by assuming a linear relationship and iteratively updating and retesting
+    the input frequency on a short simulation.
+    '''
+    desired_out = f_out
+    f_in = ones(len(input_configs))*10
+    print("Testing inputs:")
+    print(f_in)
+    actual_out = _run_calib(nrndef, N_in, f_in, w_in, input_configs,
+                                                    arange(len(nrndef)))
+    # found = abs(desired_out-actual_out) < 2  # 2 Hz margin
+    found = desired_out < actual_out
+    print("Actual out:")
+    print(actual_out)
+    print("Found: %i/%i" % (sum(found), len(found)))
+    print(found)
     print("Calibrating ...")
-    while not all(found_f_in):
-        freq_error = desired_freq-actual_freq
-        for idx, foe in enumerate(f_out_error):
-            if foe > 2:
-                f_in[idx] += 5
-            elif foe < 2:
-                f_in[idx] -= 5
-        actual_freq = run_calib(nrngrp, N_in, f_in, w_in, input_configs)
+    df_in = zeros(len(input_configs))+10
+    while not all(found):
+        print("-")
+        df_in[found] = 0
+        f_in += df_in
+        print("Testing inputs:")
+        print(f_in)
+        actual_out = _run_calib(nrndef, N_in, f_in, w_in, input_configs,
+                                    flatnonzero(~found))
+        # found = found | (abs(desired_out-actual_out) < 2)
+        found = found | (desired_out < actual_out)
+        print("Actual out:")
+        print(actual_out)
+        print("Found: %i/%i" % (sum(found), len(found)))
+        print(found)
+        found = found | (f_in > 500)
+        f_in[f_in>800] = 0
     return f_in
 
 
