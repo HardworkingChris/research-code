@@ -39,7 +39,7 @@ def find_corner_spikes(t, train, ibegin, ti, te):
 
 def bivariate_spike_distance(t1, t2, ti, te, N):
     '''Computes the bivariate SPIKE distance of Kreuz et al. (2012)
-       t1 and t2 are 1D arrays with the spiking times of two neurones    
+       t1 and t2 are 1D arrays with the spiking times of two neurones
        It returns the array of the values of the distance
        between time ti and te with N samples.
        The arrays t1, t2 and values ti, te are unit less '''
@@ -54,7 +54,7 @@ def bivariate_spike_distance(t1, t2, ti, te, N):
     # We compute the corner spikes for all the time instants we consider
     # corner_spikes is a 4 column matrix [t, tp1, tf1, tp2, tf2]
     corner_spikes = np.zeros((N,5))
- 
+
     ibegin_t1 = 0
     ibegin_t2 = 0
     corner_spikes[:,0] = t
@@ -80,7 +80,7 @@ def bivariate_spike_distance(t1, t2, ti, te, N):
     df2 = np.min(np.fabs(np.tile(t1,(N,1)) - np.tile(np.reshape(corner_spikes[:,4],(N,1)),t1.size)),axis=1)
 
     xp1 = t - corner_spikes[:,1]
-    xf1 = corner_spikes[:,2] - t 
+    xf1 = corner_spikes[:,2] - t
     xp2 = t - corner_spikes[:,3]
     xf2 = corner_spikes[:,4] - t
 
@@ -158,7 +158,7 @@ if __name__ == '__main__':
     spike_times[:,range(num_spikes/2)] = tf/2.0 * np.random.random((num_trains, num_spikes/2))
     # We now append the times for the events with increasing jitter
     for i in range(1,num_events+1):
-        tb = tf/2.0 * i / num_events 
+        tb = tf/2.0 * i / num_events
         spike_times[:,num_spikes/2+i-1] = tb + (50 *(i-1) / num_events)* (2.0 * np.random.random((num_trains,)) - 1)
 
     # And the second events with the decreasing jitter
@@ -168,8 +168,8 @@ if __name__ == '__main__':
         spike_times[:, -(i+1)] = tb + (50 - 50 *i / (num_last_events-1))* (2.0 * np.random.random((num_trains,)) - 1)
 
     # Finally we sort the spike times by increasing time for each neuron
-    spike_times.sort(axis=1) 
-    
+    spike_times.sort(axis=1)
+
     # We compute the multivariate SPIKE distance
     list_spike_trains = []
     [list_spike_trains.append(spike_times[i,:]) for i in range(num_trains)]
