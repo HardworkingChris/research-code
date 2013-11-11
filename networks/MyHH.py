@@ -1,10 +1,10 @@
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 from brian import *
 from brian.library.ionic_currents import *
 
 defaultclock.dt = dt = 0.1*ms
-duration = 5*second
+duration = 2*second
 
 # Neuron parameters
 Cm = 1*uF # /cm**2
@@ -104,3 +104,4 @@ run(duration, report='text')
 plot(memmon.times, memmon[0])
 plot(memmon.times, memmon[1])
 savefig('figure.png')
+
