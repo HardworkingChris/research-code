@@ -4,7 +4,7 @@ from brian import *
 from brian.library.ionic_currents import *
 
 defaultclock.dt = dt = 0.1*ms
-duration = 2*second
+duration = 0.5*second
 
 # Neuron parameters
 Cm = 1*uF # /cm**2
@@ -57,8 +57,8 @@ neuron = NeuronGroup(2, eqs, threshold=threshold, method='RK')
 
 
 # Inputs and connections
-PExc = PoissonInput(target=neuron[0], N=500, rate=8*Hz,
-        weight=WExc, state='gExc')
+PExc_spikes = PoissonGroup(N=500, rates=8*Hz)
+conn = Connection(PExc_spikes, neuron[0], 'gExc', weight=WExc)
 PInh = PoissonInput(target=neuron[0], N=1000, rate=5*Hz,
         weight=WInh, state='gInh')
 
@@ -77,6 +77,7 @@ neuron.v = -65*mV
 neuron.h = 1
 
 # Monitors
+inpmon = SpikeMonitor(PExc_spikes)
 memmon = StateMonitor(neuron, 'v', record=True)
 spikemon = SpikeMonitor(neuron)
 excCondMon = StateMonitor(neuron, 'gExc', record=True)
@@ -87,8 +88,14 @@ iappmon = StateMonitor(neuron, 'Iapp', record=True)
 run(duration, report='text')
 
 # Plotting
-#ax1 = subplot(1,1,1)
-#ax1.plot(memmon.times, memmon[0], color='black', label='V(t)')
+subplot(2,1,1)
+raster_plot(inpmon)
+title('Input spikes')
+subplot(2,1,2)
+plot(memmon.times/ms, memmon[0]/mV, color='black', label='V(t)')
+title('Membrane')
+xlabel("Time (ms)")
+ylabel("Membrane potential (mV)")
 #ax1.scatter(spikemon[0], ones(len(spikemon[0]))*25*mV, s=40, marker='*')
 #ax1.legend(loc='upper left')
 #ax2 = twinx()
@@ -99,9 +106,9 @@ run(duration, report='text')
 #ax2.legend(loc='upper right')
 #print(spikemon[0])
 #print('Firing rate: %f Hz' % (spikemon.nspikes/duration))
-#show()
-#
-plot(memmon.times, memmon[0])
-plot(memmon.times, memmon[1])
-savefig('figure.png')
+show()
+
+#plot(memmon.times, memmon[0])
+#plot(memmon.times, memmon[1])
+#savefig('figure.png')
 

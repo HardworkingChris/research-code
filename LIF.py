@@ -2,7 +2,7 @@
 
 from brian import *
 
-duration = 1*second
+duration = 0.1*second
 N_sims = 1
 
 lif_eq = ['dV/dt = (V_rest-V)/tau_mem : volt']
@@ -28,13 +28,18 @@ run(duration)
 
 mem.insert_spikes(st, 17*mV)
 
-print "Neuron(s) fired at: ",st.spiketimes
-print "Input rate voltage:\t\t",N_in*f_in*DV_s*tau_mem
-print "Mean membrane potential:\t",mean(mem[0])*volt
+print "Neuron(s) fired at: ", st.spiketimes
+print "Input rate voltage:\t\t", N_in*f_in*DV_s*tau_mem
+print "Mean membrane potential:\t", mean(mem[0])*volt
 
-
-plot(mem.times,mem[0],mem.times,ones(len(mem.times))*V_th)
+subplot(2,1,1)
+raster_plot(inp_mon)
+title('Input spikes')
+subplot(2,1,2)
+plot(mem.times/ms, mem[0]/mV, mem.times/ms, ones(len(mem.times))*V_th/mV)
 title('Membrane')
+xlabel("Time (ms)")
+ylabel("Membrane potential (mV)")
 show()
 
 
