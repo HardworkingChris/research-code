@@ -154,11 +154,11 @@ def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
     syncGroup = PoissonGroup(0, 0)  # dummy nrngrp
     randGroup = PoissonGroup(0, 0)
     if N_sync:
-        pulse_intervals = []
-        while sum(pulse_intervals)*second < duration:
-            interval = rnd.expovariate(f_in)+float(dt)
-            pulse_intervals.append(interval)
-        pulse_times = cumsum(pulse_intervals[:-1])  # ignore last one
+        pulse_train = []
+        pulse_time = rnd.expovariate(f_in)
+        while pulse_time <= duration:
+            pulse_train.append(pulse_time)
+            pulse_time += rnd.expovariate(f_in)
         sync_spikes = []
         pp = PulsePacket(0*second, 1, 0*second)  # dummy pp
         for pt in pulse_times:
