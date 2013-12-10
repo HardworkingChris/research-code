@@ -10,6 +10,7 @@ import gc
 
 
 # TODO: Compare genInputGroups with SynchronousInputGroup
+# TODO: Major cleanup required
 
 class SynchronousInputGroup:
     '''
