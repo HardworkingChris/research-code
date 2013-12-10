@@ -161,7 +161,7 @@ def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
             pulse_time += rnd.expovariate(f_in)
         sync_spikes = []
         pp = PulsePacket(0*second, 1, 0*second)  # dummy pp
-        for pt in pulse_times:
+        for pt in pulse_train:
             if sigma > 0:
                 try:
                     pp.generate(t=pt*second, n=N_sync, sigma=sigma*msecond)
