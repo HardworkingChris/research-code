@@ -437,9 +437,7 @@ def npss(v, spiketrain, v_th, w, dt=0.0001*second):
     # upper bound calculation
     high_bound = (th_d-v_reset)/w_d
     slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
-    slopes_norm[slopes_norm < 0] = 0
-
-    overmax = (slopes_norm > 1).nonzero()
+    #slopes_norm[slopes_norm < 0] = 0
 
     mean_slope = mean(slopes_norm)
     return mean_slope, slopes_norm
