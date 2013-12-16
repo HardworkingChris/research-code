@@ -3,7 +3,7 @@ from pickle import load
 import os
 from numpy import array, diff, floor, zeros, log, mean, std, shape, \
     random, cumsum, histogram, where, arange, divide, exp, insert, \
-    count_nonzero, bitwise_and, append
+    count_nonzero, bitwise_and, append, corrcoef
 import random as rnd
 from warnings import warn
 import gc
@@ -176,6 +176,7 @@ def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
         randGroup = PoissonGroup(N_rand, rates=f_in)
     return syncGroup, randGroup
 
+
 def _run_calib(nrndef, N_in, f_in, w_in, input_configs, active_idx):
     clear(True)
     gc.collect()
@@ -213,6 +214,7 @@ def _run_calib(nrndef, N_in, f_in, w_in, input_configs, active_idx):
     # del(calib_network, syncConns, randConns, st_mon)
     return actual_f_out
 
+
 def _calc_rate_of_change(X, Y):
     if all(Y > 0):
         return X/Y
@@ -221,6 +223,7 @@ def _calc_rate_of_change(X, Y):
     ret[gtz] = X[gtz]/Y[gtz]
     ret[~gtz] = X[~gtz]
     return ret
+
 
 def calibrate_frequencies(nrndef, N_in, w_in, input_configs, f_out):
     '''
@@ -790,7 +793,7 @@ def times_to_bin(spikes, dt=0.001*second, duration=None):
         if duration is None:
             return spikes
         else:
-            return zeros(duration/dt)
+            return zeros(int(duration/dt))
     st = divide(spikes,dt)
     st = st.astype('int')
     if duration is None:
@@ -820,6 +823,12 @@ def times_to_bin_multi(spikes, dt=0.001*second, duration=None):
     bintimes = array([times_to_bin(st, dt=dt, duration=duration)\
                                                     for st in spiketimes])
     return bintimes
+
+
+def corrcoef_spiketrains(spikes, dt=0.001*second, duration=None):
+    bintimes = times_to_bin_multi(spikes, dt, duration)
+    correlations = corrcoef(bintimes)
+    return correlations
 
 
 def PSTH(spikes, bin=0.001*second, dt=0.001*second, duration=None):
