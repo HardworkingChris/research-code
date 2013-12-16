@@ -164,7 +164,7 @@ def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
         for pt in pulse_train:
             if sigma > 0:
                 try:
-                    pp.generate(t=pt*second, n=N_sync, sigma=sigma*msecond)
+                    pp.generate(t=pt, n=N_sync, sigma=sigma)
                     sync_spikes.extend(pp.spiketimes)
                 except ValueError:
                     continue
