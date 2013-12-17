@@ -415,7 +415,7 @@ def pre_spike_slope(mem, spiketrain, vth, w, dt=0.1*ms):
 def normalised_pre_spike_slope(mem, spiketrain, v0, vth, tau, w, dt=0.1*ms):
     first_spike = spiketrain[0]
     first_spike_dt = int(first_spike/dt)
-    vr = mem[first_spike_dt+1]  # reset potential
+    vr = mem[first_spike_dt+1]*volt  # reset potential
     duration = spiketrain[-1]
     duration_dt = int(duration/dt)
     time_since_spike = ones(duration_dt)*10000
@@ -426,22 +426,20 @@ def normalised_pre_spike_slope(mem, spiketrain, v0, vth, tau, w, dt=0.1*ms):
         isi_dt = nxt_dt-prv_dt
         time_since_spike[prv_dt:nxt_dt] = arange(isi_dt)*dt
         low_input[prv_dt:nxt_dt] = ones(isi_dt)*(vth-vr)/(1-exp(-(nxt-prv)/tau))
-    times = arange(0, duration, float(dt))
     high_bound = v0+(vr-v0)*exp(-time_since_spike/tau)
     low_bound = vr+low_input*(1-exp(-time_since_spike/tau))
     window_starts = spiketrain-w
-    window_starts_dt = (window_starts/dt).astype(int)
+    window_starts_dt = (window_starts[1:]/dt).astype(int)
     # there's some redundant processing here for clarity
     # all values, mem, low and high bound at (t_i-w) are converted to slopes by
     # calculating (vth-x)/w, which means we could just avoid it and the
     # normalisation would still work.
-    high_slopes = (vth-high_bound)/w
-    low_slopes = (vth-low_bound)/w
-    mem_slopes = (vth-window_starts)/w
+    high_slopes = (vth-high_bound[window_starts_dt])/w
+    low_slopes = (vth-low_bound[window_starts_dt])/w
+    mem_slopes = (vth-mem[window_starts_dt])/w
     norm_slopes = (mem_slopes-low_slopes)/(high_slopes-low_slopes)
+    norm_slopes[normslopes<0] = 0  # this should be fixed
     return norm_slopes
-
-
 
 
 def sta(v, spiketrain, w, dt=0.0001*second):
