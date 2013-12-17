@@ -9,7 +9,7 @@ from warnings import warn
 import gc
 
 
-# TODO: Compare genInputGroups with SynchronousInputGroup
+# TODO: Compare gen_input_groups with SynchronousInputGroup
 # TODO: Major cleanup required
 
 class SynchronousInputGroup:
@@ -146,7 +146,11 @@ class SynchronousInputGroup:
             yield t + jitt_variate
 
 
-def genInputGroups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
+def gen_input_groups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
+    """
+    Generate two input groups, one for synchronous spikes and the other for
+    random (Poisson), independent spiking.
+    """
     print("Generating inputs:\nN: %i, fi: %f, sync: %f, jitt: %f" % (
         N_in, f_in, S_in, sigma))
     N_sync = int(N_in*S_in)
@@ -195,7 +199,7 @@ def _run_calib(nrndef, N_in, f_in, w_in, input_configs, active_idx):
     print active_idx
     active_configs = array(input_configs)[active_idx]
     for idx, (sync, jitter) in zip(active_idx, active_configs):
-        sg, rg = genInputGroups(N_in, f_in[idx], sync, jitter, calib_duration)
+        sg, rg = gen_input_groups(N_in, f_in[idx], sync, jitter, calib_duration)
         if len(sg):
             sConn = Connection(sg, nrngrp[idx], state='V', weight=w_in)
             syncConns.append(sConn)
@@ -381,174 +385,63 @@ def positive_slope_distribution(v, w):
     return dist
 
 
-def npss(v, spiketrain, v_th, w, dt=0.0001*second):
-    '''
-    Calculates the normalised pre-spike membrane potential slope.
-
-    Parameters
-    ----------
-    v : numpy array
-        Membrane potential values as taken from brian.StateMonitor
-    spiketrain : numpy array
-        Spike train of the membrane potential data in 'v'
-        as taken from brian.SpikeMonitor
-    v_th : brian voltage
-        Neuron spike threshold
-    w : brian second (time)
-        Pre-spike window used to calculate spike triggered average
-        and subsequently slope values
-    dt : brian second (time)
-        The simulation time step
-
-    Returns
-    -------
-    m_slope : float
-        The mean npss of the simulation
-    slopes : list of float
-        The individual npss values for each spike
-
-    '''
-
-    warn('Using deprecated function npss()')
-    if (spiketrain.size <= 1):
-        return 0,[0]
-
-    '''
-    Using the STA might be a processing hog. We could just as easily
-    use the plain m calculation (V(t) - V(t-w))/w as w do in the new
-    firing slope.
-    Perhaps I could/should discard this function, or at least mark it as
-    deprecated.
-    '''
-    (m,s,wins) = sta(v, spiketrain, w, dt)
-    wins[:,-1] = v_th
-    # remove first window
-    wins = wins[1:,:]
-
-    w_d = w/dt-1
-    th_d = v_th/volt
-
-    slopes = mean(diff(wins,axis=1),1)
-
-    firstspiketime_d = int(spiketrain[0]*second/dt)
-    v_reset = v[firstspiketime_d+1]
-    isis = diff(spiketrain)/dt
-
-    # lower bound calculation
-    low_bound = (th_d-v_reset)/isis
-
-    # upper bound calculation
-    high_bound = (th_d-v_reset)/w_d
-    slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
-    #slopes_norm[slopes_norm < 0] = 0
-
-    mean_slope = mean(slopes_norm)
-    return mean_slope, slopes_norm
+def plot_slope_bounds(spiketrain, v0, vr, vth, tau, dt):
+    duration = spiketrain[-1]
+    duration_dt = int(duration/dt)
+    time_since_spike = ones(duration_dt)*10000
+    low_input = zeros(duration_dt)-vr
+    for prv, nxt in zip(spiketrain[:-1], spiketrain[1:]):
+        prv_dt = int(prv/dt)
+        nxt_dt = int(nxt/dt)
+        isi_dt = nxt_dt-prv_dt
+        time_since_spike[prv_dt:nxt_dt] = arange(isi_dt)*dt
+        low_input[prv_dt:nxt_dt] = ones(isi_dt)*(vth-vr)/(1-exp(-(nxt-prv)/tau))
+    times = arange(0, duration, float(dt))
+    high_bound = v0+(vr-v0)*exp(-time_since_spike/tau)
+    low_bound = vr+low_input*(1-exp(-time_since_spike/tau))
+    plot(times, high_bound, times, low_bound)
 
 
-def firing_slope(mem, spiketrain, dt=0.0001*second, w=0.0001*second):
-    """
-    Returns the mean value and a list containing each individual values of the
-    slopes of the membrane potential at the time of firing of each spike.
-
-    Parameters
-    ----------
-    mem : numpy array
-        Membrane potential as taken from brian.StateMonitor
-    spiketrain : numpy array
-        Spike times corresponding to the membrane potential data in `v`
-    w : brian second (time)
-        Slope window
-    dt : brian second (time)
-        Simulation time step (default 0.1 ms)
-
-    Returns
-    -------
-    slope_avg : float
-        The mean slope of the membrane potential for all threshold crossings
-    slopes : numpy array
-        The individual values of the membrane potential slope at each
-        threshold crossing
-
-    NOTE: Although the return values are untiless they represent volt/second
-    values.
-
-    TODO:
-    - Make separate function that accepts a spike monitor, or dictionary
-    and returns a dictionary of slope values, for brian compatibility.
-    """
-
-    w = max(w, dt)
-    if len(spiketrain) < 2:
-        return 0, array([])
-    intervals = diff(spiketrain)
-    intervals = insert(intervals, 0, spiketrain[0])
-    windows = array([min(w, i*second-dt) for i in intervals])
-    st_dt = spiketrain/dt
-    st_dt = st_dt.astype(int)
-    w_dt = (windows/dt).astype(int)
-    slopes = (mem[st_dt]-mem[st_dt-w_dt])*volt/windows
-    return mean(slopes), slopes
+def pre_spike_slope(mem, spiketrain, vth, w, dt=0.1*ms):
+    duration = spiketrain[-1]
+    duration_dt = int(duration/dt)
+    spiketrain_dt = (spiketrain/dt).astype(int)
+    w_dt = int(w/dt)
+    pre_spike_mem = mem[spiketrain_dt-w_dt]
+    pre_spike_slopes = (vth-pre_spike_mem)/w
+    return pre_spike_slopes
 
 
-def norm_firing_slope(mem, spiketrain, th, tau,
-                      dt=0.0001*second, w=0.0001*second):
-    """
-    This function will replace npss for calculating the normalised slope.
-    It doesn't use the STA to calculate slopes, which should be faster.
-
-    Parameters
-    ----------
-    mem : numpy array
-        Membrane potential as taken from brian.StateMonitor
-    spiketrain : numpy array
-        Spike times corresponding to the membrane potential data in `v`
-    th : brian volt (potential)
-        Neuron's firing threshold
-    tau : brian second (time)
-        Neuron's membrane leak time constant
-    dt : brian second (time)
-        Simulation time step (default 0.1 ms)
-    w : brian second (time)
-        Slope window
-
-    Returns
-    -------
-    slope_avg : float
-        The mean slope of the membrane potential for all threshold crossings
-    slopes : numpy array
-        The individual values of the membrane potential slope at each
-        threshold crossing
-
-    NOTE: Although the return values are untiless they represent volt/second
-    values.
-    """
-
-    if w < dt:
-        w = dt
-    if len(spiketrain) < 2:
-        return 0, array([])
-    spiketrain = spiketrain[spiketrain > w]  # discard spikes that occurred too early
-    mslope, slopes = firing_slope(mem, spiketrain, dt, w)
+def normalised_pre_spike_slope(mem, spiketrain, v0, vth, tau, w, dt=0.1*ms):
     first_spike = spiketrain[0]
-    first_spike_index = int(first_spike/dt)
-    reset = mem[first_spike_index+1]*volt
-    slope_max = (th-reset)/w
-    '''
-    Minimum slope is ISI dependent and requires time constant to calculate
-    '''
-    ISIs = diff(spiketrain)
-    min_input = (th - reset)/(1-exp(-ISIs/tau))
-    lowstart = reset + min_input * (1-exp(-(ISIs-w)/tau))
-    slope_min = (th - lowstart)/w
-    slopes_normed = (slopes[1:] - slope_min)/(slope_max - slope_min)
-    #if min(slopes_normed) < 0 or max(slopes_normed) > 1:
-    #    import matplotlib as mpl
-    #    mpl.pyplot.plot(mem)
-    #    mpl.pyplot.title("normalised slopes [%f, %f]" % (min(slopes_normed),
-    #        max(slopes_normed)))
-    #    mpl.pyplot.show()
-    return mean(slopes_normed), slopes_normed
+    first_spike_dt = int(first_spike/dt)
+    vr = mem[first_spike_dt+1]  # reset potential
+    duration = spiketrain[-1]
+    duration_dt = int(duration/dt)
+    time_since_spike = ones(duration_dt)*10000
+    low_input = zeros(duration_dt)-vr
+    for prv, nxt in zip(spiketrain[:-1], spiketrain[1:]):
+        prv_dt = int(prv/dt)
+        nxt_dt = int(nxt/dt)
+        isi_dt = nxt_dt-prv_dt
+        time_since_spike[prv_dt:nxt_dt] = arange(isi_dt)*dt
+        low_input[prv_dt:nxt_dt] = ones(isi_dt)*(vth-vr)/(1-exp(-(nxt-prv)/tau))
+    times = arange(0, duration, float(dt))
+    high_bound = v0+(vr-v0)*exp(-time_since_spike/tau)
+    low_bound = vr+low_input*(1-exp(-time_since_spike/tau))
+    window_starts = spiketrain-w
+    window_starts_dt = (window_starts/dt).astype(int)
+    # there's some redundant processing here for clarity
+    # all values, mem, low and high bound at (t_i-w) are converted to slopes by
+    # calculating (vth-x)/w, which means we could just avoid it and the
+    # normalisation would still work.
+    high_slopes = (vth-high_bound)/w
+    low_slopes = (vth-low_bound)/w
+    mem_slopes = (vth-window_starts)/w
+    norm_slopes = (mem_slopes-low_slopes)/(high_slopes-low_slopes)
+    return norm_slopes
+
+
 
 
 def sta(v, spiketrain, w, dt=0.0001*second):
@@ -1066,48 +959,3 @@ def recursiveflat(ndobject):
         return recursiveflat([item for row in ndobject for item in row])
 
 
-
-#def npss_ar(v, spiketrain, v_th, tau_m, w):
-#    '''
-#    BROKEN!!!
-#    '''
-#    warn("npss_ar: BROKEN! FIX ME!")
-#    return 0, [0]
-#    if (spiketrain.size <= 1):
-#        return 0,[0]
-#
-#    (m,s,wins) = sta(v, spiketrain, w)
-#    wins[:,-1] = v_th
-#    # remove first window
-#    wins = wins[1:,:]
-#    slopes = mean(diff(wins,axis=1),1)
-#    spiketime_d = int(spiketrain[0]*second/(0.0001*second))
-#    v_reset = v[spiketime_d+1]*mV
-#    #print("reset: ",v_reset
-#    isis = diff(spiketrain)
-#    isis = isis*second/(0.0001*second)
-#    # lower bound calculation
-#    low_bound = (v_th-v_reset)/isis
-#    #print low_bound[2],"= (",v_th,"-",v_reset,")/",isis[2]
-#    # upper bound calculation
-#    t_decay = isis-w*second/(0.0001*second)
-#    t_decay = array(t_decay,dtype=int)
-#    t_decay_max = max(t_decay)
-#    decay_max = v_reset*\
-#            exp(-(array(range(t_decay_max))/(tau_m/(0.0001*second))))
-#    high_start = decay_max[t_decay-1]
-#    high_bound = (v_th/volt-high_start)/(w/(0.0001*second))
-#    slopes_norm = (slopes-low_bound)/(high_bound-low_bound)
-#    slopes_norm[slopes_norm < 0] = 0
-#    overmax = (slopes_norm > 1).nonzero()
-#    '''
-#    if (size(overmax) > 0):
-#        print "Normalised slope exceeds 1 in",size(overmax),"cases:"
-#        print "H bound:",high_bound[overmax]
-#        print "L bound:",low_bound[overmax]
-#        print "Slopes :",slopes[overmax]
-#        print "Norm sl:",slopes_norm[overmax]
-#        print "ISIs   :",isis[overmax]
-#    '''
-#    mean_slope = mean(slopes_norm)
-#    return mean_slope,slopes_norm
