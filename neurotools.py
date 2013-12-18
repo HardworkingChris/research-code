@@ -151,8 +151,6 @@ def gen_input_groups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
     Generate two input groups, one for synchronous spikes and the other for
     random (Poisson), independent spiking.
     """
-    print("Generating inputs:\nN: %i, fi: %f, sync: %f, jitt: %f" % (
-        N_in, f_in, S_in, sigma))
     N_sync = int(N_in*S_in)
     N_rand = N_in-N_sync
     syncGroup = PoissonGroup(0, 0)  # dummy nrngrp
