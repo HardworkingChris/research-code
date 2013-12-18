@@ -402,7 +402,7 @@ def plot_slope_bounds(spiketrain, v0, vr, vth, tau, dt):
     plot(times, high_bound, times, low_bound)
 
 
-def pre_spike_slope(mem, spiketrain, vth, w, dt=0.1*ms):
+def pre_spike_slopes(mem, spiketrain, vth, w, dt=0.1*ms):
     duration = spiketrain[-1]
     duration_dt = int(duration/dt)
     spiketrain_dt = (spiketrain/dt).astype(int)
@@ -412,7 +412,7 @@ def pre_spike_slope(mem, spiketrain, vth, w, dt=0.1*ms):
     return pre_spike_slopes
 
 
-def normalised_pre_spike_slope(mem, spiketrain, v0, vth, tau, w, dt=0.1*ms):
+def normalised_pre_spike_slopes(mem, spiketrain, v0, vth, tau, w, dt=0.1*ms):
     first_spike = spiketrain[0]
     first_spike_dt = int(first_spike/dt)
     vr = mem[first_spike_dt+1]*volt  # reset potential
@@ -438,7 +438,7 @@ def normalised_pre_spike_slope(mem, spiketrain, v0, vth, tau, w, dt=0.1*ms):
     low_slopes = (vth-low_bound[window_starts_dt])/w
     mem_slopes = (vth-mem[window_starts_dt])/w
     norm_slopes = (mem_slopes-low_slopes)/(high_slopes-low_slopes)
-    norm_slopes[normslopes<0] = 0  # this should be fixed
+    norm_slopes[norm_slopes<0] = 0  # this should be fixed
     return norm_slopes
 
 
@@ -685,8 +685,7 @@ def times_to_bin(spikes, dt=0.001*second, duration=None):
             return spikes
         else:
             return zeros(int(duration/dt))
-    st = divide(spikes,dt)
-    st = st.astype('int')
+    st = divide(spikes, dt).astype(int)
     if duration is None:
         binlength = max(st)+1
     else:
@@ -701,18 +700,17 @@ def times_to_bin(spikes, dt=0.001*second, duration=None):
 
 
 def times_to_bin_multi(spikes, dt=0.001*second, duration=None):
-    spiketimes = []
     if isinstance(spikes, dict):
         spiketimes = array([st for st in spikes.itervalues()])
-    elif isinstance(spikes, list) or isinstance(spikes, array):
+    elif isinstance(spikes, (list, ndarray)):
         spiketimes = spikes
     else:
         raise TypeError('dictionary, list or array expected')
     if duration is None:
         # find the maximum value of all
         duration = max(recursiveflat(spiketimes))+float(dt)
-    bintimes = array([times_to_bin(st, dt=dt, duration=duration)\
-                                                    for st in spiketimes])
+    bintimes = array([times_to_bin(st, dt=dt, duration=duration)
+                      for st in spiketimes])
     return bintimes
 
 
