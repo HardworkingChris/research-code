@@ -435,7 +435,7 @@ def normalised_pre_spike_slopes(mem, spiketrain, v0, vth, tau, w, dt=0.1*ms):
     high_slopes = (vth-high_bound[window_starts_dt])/w
     low_slopes = (vth-low_bound[window_starts_dt])/w
     mem_slopes = (vth-mem[window_starts_dt])/w
-    if not high_slopes == low_slopes:
+    if high_slopes - low_slopes > 0:
         norm_slopes = (mem_slopes-low_slopes)/(high_slopes-low_slopes)
     else:
         norm_slopes = zeros(len(mem_slopes))
