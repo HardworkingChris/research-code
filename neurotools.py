@@ -435,10 +435,14 @@ def normalised_pre_spike_slopes(mem, spiketrain, v0, vth, tau, w, dt=0.1*ms):
     high_slopes = (vth-high_bound[window_starts_dt])/w
     low_slopes = (vth-low_bound[window_starts_dt])/w
     mem_slopes = (vth-mem[window_starts_dt])/w
-    if high_slopes - low_slopes > 0:
-        norm_slopes = (mem_slopes-low_slopes)/(high_slopes-low_slopes)
-    else:
-        norm_slopes = zeros(len(mem_slopes))
+
+    # Let's avoid div by zero by adding a tiny value to high_slopes where
+    # necessary. Not the most correct solution, but wont affect results OTOH,
+    # we can just drop them, but that might cause issues with spike counts vs
+    # slope counts
+    dbz_idx = high_slopes == low_slopes
+    high_slopes[dbz_idx] += 1e-10
+    norm_slopes = (mem_slopes-low_slopes)/(high_slopes-low_slopes)
     norm_slopes[norm_slopes<0] = 0  # this should be fixed
     return norm_slopes
 
