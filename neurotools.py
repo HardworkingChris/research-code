@@ -719,8 +719,8 @@ def times_to_bin_multi(spikes, dt=0.001*second, duration=None):
     return bintimes
 
 
-def corrcoef_spiketrains(spikes, dt=0.001*second, duration=None):
-    bintimes = times_to_bin_multi(spikes, dt, duration)
+def corrcoef_spiketrains(spikes, b=0.001*second, duration=None):
+    bintimes = times_to_bin_multi(spikes, b, duration)
     correlations = corrcoef(bintimes)
     return correlations
 
