@@ -21,37 +21,38 @@
 #
 # (C) R. V. Florian & C. V. Rusu, 2012
 #
-# Permission is hereby granted, free of charge, to any person obtaining a copy 
-# of this software and associated documentation files (the "Software"), to deal 
-# in the Software without restriction, including without limitation the rights 
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies 
-# of the Software, and to permit persons to whom the Software is furnished to do 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+# of the Software, and to permit persons to whom the Software is furnished to do
 # so, subject to the following conditions:
 #
-# 1. If you publish scientific papers based on work that uses the Software, you 
+# 1. If you publish scientific papers based on work that uses the Software, you
 # should consider citing within these papers the following:
-# Rusu, C. V. and Florian, R. V. (2010), A new spike train metric, 
+# Rusu, C. V. and Florian, R. V. (2010), A new spike train metric,
 # BMC Neuroscience 11(Suppl. 1), P169. Nineteenth Annual Computational Neuroscience Meeting:
 # CNS*2010.
 # 2. If you create derivative works using the Sofware and these works have an associated
-# list of contributors, you must attribute the work of R. V. Florian and C. V. Rusu according 
+# list of contributors, you must attribute the work of R. V. Florian and C. V. Rusu according
 # to the relevance of the Software to the derivative works.
 #
-# The above copyright notice and this permission notice shall be included in all 
+# The above copyright notice and this permission notice shall be included in all
 # copies or substantial portions of the Software.
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
-# PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE 
-# FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT 
-# OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+# PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+# FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT
+# OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 # DEALINGS IN THE SOFTWARE.
 #
 ################################################################################
 
+import numpy as np
 
 
-def modulus_metric(T1, T2, a, b):  
+def modulus_metric(T1, T2, a, b):
     #T1 and T2 are ordered, nonempty sets of real numbers, indexed starting from 0.
     #i1 and i2 are the indices of the currently processed spikes in the two spike
     #trains. p1 and p2 are the indices of the previously processed spikes in the
@@ -72,10 +73,10 @@ def modulus_metric(T1, T2, a, b):
 
     i1 = 0; i2 = 0; p1 = 0; p2 = 0; p = 0
     n1 = len(T1); n2 = len(T2)
-    
+
     #P is an array of structures (s,phi) consisting of a ordered pair of numbers.
     P = [(a, abs(T1[0] - T2[0]) )]
-    
+
     #Process the spikes until the end of one of the spikes trains is reached.
     while i1 < n1 and i2 < n2:
         if T1[i1] <= T2[i2]:
@@ -96,8 +97,8 @@ def modulus_metric(T1, T2, a, b):
                 P.append((t, 0))
             #Adds to P the currently processed spike.
             t = T1[i1]
-            #We have d(t, T1) = 0. If at least one spike from T2 has been processed, we 
-            #have T2[p2] <= t <= T2[i2], with i2 = p2 + 1, and thus 
+            #We have d(t, T1) = 0. If at least one spike from T2 has been processed, we
+            #have T2[p2] <= t <= T2[i2], with i2 = p2 + 1, and thus
             #d(t, T2) = min(|t-T2[p2]|, T2[i2]-t). If no spike from T2 has been processed,
             #we have p2 = i2 = 0, and the previous formula for d(t, T2) still holds.
             P.append((t, min(abs(t - T2[p2]), T2[i2] - t)))
@@ -117,7 +118,7 @@ def modulus_metric(T1, T2, a, b):
             p2 = i2
             i2 += 1
             p = 2
-            
+
     #Process the rest of the spikes in the spike train that has not been fully
     #processed:
     while i1 < n1:
@@ -159,17 +160,28 @@ def modulus_metric(T1, T2, a, b):
             #p2 = i2
             i2 += 1
             p = 2
-    
+
     P.append ((b, abs(T1[n1 - 1] - T2[n2 - 1])))
-    
+
     #sort P with regard to the first element
     P.sort()
-    
+
     #perform the integration
     do = 0
     for i in range (1,len(P)):
         do += (P[i][0] - P[i-1][0]) * (P[i][1] + P[i-1][1]) / 2.0
     return do
+
+
+def avg_pairwise_modulus(collection, start, end):
+    count = len(collection)
+    distances = []
+    for i in range(count - 1):
+        for j in range(i+1, count):
+            dist = modulus_metric(collection[i], collection[j], start, end)
+            distances.append(dist)
+    return np.mean(distances)
+
 
 #Sample usage:
 #a = 0; b = 20; T1 = [2, 5,10,11,20]; T2 = [3, 6, 14, 18]
