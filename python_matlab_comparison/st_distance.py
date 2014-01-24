@@ -6,6 +6,7 @@ import numpy as np
 import scipy.io as scio
 import spike_distance as sd
 import spike_distance_mp as sdm
+import metrics
 
 
 
@@ -38,7 +39,7 @@ def octave_spkd(st_one, st_two, cost):
     scio.savemat("tmp_spiketrains.mat", data)
     print("Data saved to tmp_spiketrains.mat ...")
     _null = open(os.devnull, "w")
-    subp.call(["octave", "run_spkd.m"]) #, stdout=_null)#, stderr=_null)
+    subp.call(["octave", "run_spkd.m"], stdout=_null)#, stderr=_null)
     print("Octave subprocess finished!")
     oct_dist = scio.loadmat("tmp_distfile.mat")["d"]
     try:
@@ -52,21 +53,25 @@ def octave_spkd(st_one, st_two, cost):
 if __name__=="__main__":
     # generate two spike trains
     print("Generating random spike trains ...")
-    st_one = np.cumsum(np.random.random(100))
-    st_two = np.cumsum(np.random.random(90))
-    cost = np.random.randint(100)
+    len_one = np.random.randint(100)
+    len_two = np.random.randint(100)
+    st_one = np.cumsum(np.random.random(len_one))
+    st_two = np.cumsum(np.random.random(len_two))
+    cost = float(np.random.randint(100))
 
     print("Running python script(s) ...")
     dist_sd = sd.stdistance(st_one, st_two, cost)
     dist_sdm = sdm.stdistance(st_one, st_two, cost)
+    dist_m = metrics.vp_st_distance(st_one, st_two, cost)
 
     print("Doing the octave ...")
     dist_oct = octave_spkd(st_one, st_two, cost)
 
     print("The results were as follows:")
-    print("sd\t\tsdm\t\toctave")
-    print("%0.5f\t%0.5f\t%0.5f" % (dist_sd, dist_sdm, dist_oct))
+    print("m\t\tsd\t\tsdm\t\toctave")
+    print("%0.10f\t%0.10f\t%0.10f\t%0.10f" % (dist_m, dist_sd, dist_sdm, dist_oct))
     print("-"*10)
+    print("|m - oct|  = %f" % (np.abs(dist_m-dist_oct)))
     print("|sd - sdm|  = %f" % (np.abs(dist_sd-dist_sdm)))
     print("|sd - oct|  = %f" % (np.abs(dist_sd-dist_oct)))
     print("|sdm - oct| = %f" % (np.abs(dist_sdm-dist_oct)))
