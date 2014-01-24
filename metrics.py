@@ -3,8 +3,6 @@ import multiprocessing
 import itertools
 
 
-
-
 def vp(st_one, st_two, cost):
     '''
     Calculates the "spike time" distance (Victor & Purpura, 1996) for a single
