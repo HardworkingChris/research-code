@@ -12,6 +12,9 @@ def mean_pairwise_distance(all_spikes, cost):
 
 
 def stdistance(spiketrain_a, spiketrain_b, cost):
+    print("THIS IS BROKEN!")
+    import sys
+    sys.exit(10)
     num_spike_i = len(spiketrain_a)
     num_spike_j = len(spiketrain_b)
     if num_spike_i == 0 or num_spike_j == 0:
