@@ -3,17 +3,9 @@ import multiprocessing
 import itertools
 
 
-def mean_pairwise_vp_st_distance(all_spikes, cost):
-    count = len(all_spikes)
-    distances = []
-    for i in range(count - 1):
-        for j in range(i + 1, count):
-            dist = vp_st_distance(all_spikes[i], all_spikes[j], cost)
-            distances.append(dist)
-    return np.mean(distances)
 
 
-def vp_st_distance(st_one, st_two, cost):
+def vp(st_one, st_two, cost):
     '''
     Calculates the "spike time" distance (Victor & Purpura, 1996) for a single
     cost.
@@ -45,14 +37,52 @@ def vp_st_distance(st_one, st_two, cost):
     return scr[-1,-1]
 
 
-def interval_VP(inputspikes, outputspikes, cost, dt=0.1*ms):
+def vp_pairwise_mean_mp(spiketrains, cost):
+    count = len(spiketrains)
+    distances = []
+    idx_all = range(count - 1)
+    pool = multiprocessing.Pool()
+    distances_nested = pool.map(_all_dist_to_end,
+                                zip(idx_all, itertools.repeat(spiketrains),
+                                    itertools.repeat(cost)))
+    distances = []
+    pool.close()
+    pool.join()
+    for dn in distances_nested:
+        distances.extend(dn)
+    return np.mean(distances)
+
+
+def vp_pairwise_mean(all_spikes, cost):
+    count = len(all_spikes)
+    distances = []
+    for i in range(count - 1):
+        for j in range(i + 1, count):
+            dist = vp(all_spikes[i], all_spikes[j], cost)
+            distances.append(dist)
+    return np.mean(distances)
+
+
+def _all_dist_to_end(args):
+    idx = args[0]
+    spiketrains = args[1]
+    cost = args[2]
+    num_spiketrains = len(spiketrains)
+    distances = []
+    for jdx in range(idx + 1, num_spiketrains):
+        dist = vp(spiketrains[idx], spiketrains[jdx], cost)
+        distances.append(dist)
+    return distances
+
+
+def interval_vp_st(inputspikes, outputspikes, cost, dt=0.1*ms):
     dt = float(dt)
     vpdists = []
     for prv, nxt in zip(outputspikes[:-1], outputspikes[1:]):
         interval_inputs = []
         for insp in inputspikes:
             interval_inputs.append(insp[(prv < insp) & (insp < nxt+dt)])
-        vpd = mean_pairwise_distance(interval_inputs, cost)
+        vpd = mean_pairwise_vp_st_distance(interval_inputs, cost)
         vpdists.append(vpd)
     return vpdists
 
