@@ -1,4 +1,6 @@
 import numpy as np
+import multiprocessing
+import itertools
 
 
 def mean_pairwise_vp_st_distance(all_spikes, cost):
@@ -12,6 +14,16 @@ def mean_pairwise_vp_st_distance(all_spikes, cost):
 
 
 def vp_st_distance(spiketrain_a, spiketrain_b, cost):
+    '''
+    Calculates the "spike time" distance (Victor & Purpura, 1996) for a single
+    cost.
+
+    tli: vector of spike times for first spike train
+    tlj: vector of spike times for second spike train
+    cost: cost per unit time to move a spike
+
+    Translated to Python by Achilleas Koutsou from Matlab code by Daniel Reich.
+    '''
     num_spike_i = len(spiketrain_a)
     num_spike_j = len(spiketrain_b)
     if num_spike_i == 0 or num_spike_j == 0:
