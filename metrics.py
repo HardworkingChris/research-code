@@ -13,7 +13,7 @@ def mean_pairwise_vp_st_distance(all_spikes, cost):
     return np.mean(distances)
 
 
-def vp_st_distance(spiketrain_a, spiketrain_b, cost):
+def vp_st_distance(st_one, st_two, cost):
     '''
     Calculates the "spike time" distance (Victor & Purpura, 1996) for a single
     cost.
@@ -24,24 +24,25 @@ def vp_st_distance(spiketrain_a, spiketrain_b, cost):
 
     Translated to Python by Achilleas Koutsou from Matlab code by Daniel Reich.
     '''
-    num_spike_i = len(spiketrain_a)
-    num_spike_j = len(spiketrain_b)
-    if num_spike_i == 0 or num_spike_j == 0:
-        return 0
-    matrix = np.zeros((num_spike_i, num_spike_j))
-    for i in range(num_spike_i):
-        matrix[i][0] = i
-    for i in range(num_spike_j):
-        matrix[0][i] = i
-    for m in range(1, num_spike_i):
-        for l in range(1, num_spike_j):
-            cost_a = matrix[m - 1][l] + 1
-            cost_b = matrix[m][l - 1] + 1
-            temp = abs((spiketrain_a[m]) - (spiketrain_b[l]))
-            cost_c = matrix[m - 1][l - 1] + (cost * temp)
-            matrix[m][l] = min(cost_a, cost_b, cost_c)
-    d_spike = matrix[num_spike_i - 1][num_spike_j - 1]
-    return d_spike
+    len_one = len(st_one)
+    len_two = len(st_two)
+    if cost == 0:
+        dist = np.abs(len_one-len_two)
+        return dist
+    elif cost == float('inf'):
+        dist = len_one+len_two
+        return dist
+    scr = np.zeros((len_one+1, len_two+1))
+    scr[:,0] = np.arange(len_one+1)
+    scr[0,:] = np.arange(len_two+1)
+    if len_one and len_two:
+        for i in range(1, len_one+1):
+            for j in range(1, len_two+1):
+                scr[i,j]=np.min((scr[i-1,j]+1,
+                                scr[i,j-1]+1,
+                                scr[i-1,j-1]+cost*np.abs(st_one[i-1]-st_two[j-1]))
+                               )
+    return scr[-1,-1]
 
 
 def interval_VP(inputspikes, outputspikes, cost, dt=0.1*ms):
