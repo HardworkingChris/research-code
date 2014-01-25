@@ -719,12 +719,6 @@ def times_to_bin_multi(spikes, dt=0.001*second, duration=None):
     return bintimes
 
 
-def corrcoef_spiketrains(spikes, b=0.001*second, duration=None):
-    bintimes = times_to_bin_multi(spikes, b, duration)
-    correlations = corrcoef(bintimes)
-    return correlations
-
-
 def PSTH(spikes, bin=0.001*second, dt=0.001*second, duration=None):
     '''
     Similar to times_to_bin{_multi} though it doesn't discard multiple spikes

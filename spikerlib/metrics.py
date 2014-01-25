@@ -1,6 +1,7 @@
 import numpy as np
 import multiprocessing
 import itertools
+from neurotools import times_to_bin_multi
 
 
 def vp(st_one, st_two, cost):
@@ -73,19 +74,19 @@ def _all_dist_to_end(args):
     return distances
 
 
-def interval_vp_st(inputspikes, outputspikes, cost, dt=0.1*ms):
+def interval_vp_st(inputspikes, outputspikes, cost, dt=0.0001):
     dt = float(dt)
     vpdists = []
     for prv, nxt in zip(outputspikes[:-1], outputspikes[1:]):
         interval_inputs = []
         for insp in inputspikes:
             interval_inputs.append(insp[(prv < insp) & (insp < nxt+dt)])
-        vpd = mean_pairwise_vp_st_distance(interval_inputs, cost)
+        vpd = vp_pairwise_mean(interval_inputs, cost)
         vpdists.append(vpd)
     return vpdists
 
 
-def interval_Kr(inputspikes, outputspikes, dt=0.1*ms):
+def interval_Kr(inputspikes, outputspikes, dt=0.0001):
     dt = float(dt)
     krdists = []
     for prv, nxt in zip(outputspikes[:-1], outputspikes[1:]):
@@ -94,7 +95,7 @@ def interval_Kr(inputspikes, outputspikes, dt=0.1*ms):
     return krdists
 
 
-def interval_corr(inputspikes, outputspikes, b=0.1*ms, duration=None):
+def interval_corr(inputspikes, outputspikes, b=0.001, duration=None):
     b = float(b)
     corrs = []
     for prv, nxt in zip(outputspikes[:-1], outputspikes[1:]):
@@ -103,7 +104,14 @@ def interval_corr(inputspikes, outputspikes, b=0.1*ms, duration=None):
             interval_spikes = insp[(prv < insp) & (insp <= nxt)]-prv
             if len(interval_spikes):
                 interval_inputs.append(interval_spikes)
-        corrs_i = mean(corrcoef_spiketrains(interval_inputs, b, duration))
+        corrs_i = np.mean(corrcoef_spiketrains(interval_inputs, b, duration))
         corrs.append(corrs_i)
     return corrs
+
+
+def corrcoef_spiketrains(spikes, b=0.001, duration=None):
+    bintimes = times_to_bin_multi(spikes, b, duration)
+    correlations = np.corrcoef(bintimes)
+    return correlations
+
 
