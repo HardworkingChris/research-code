@@ -1,69 +1,73 @@
-################################################################################
-#An optimized algorithm for computing the modulus-metric distance do between
-#two spike trains T1 and T2.
-#
-#For more information, please see the folowing papers:
-#
-#Rusu, C. V. and Florian, R. V, A new class of metrics for spike trains, submitted.
-#Preprint: arXiv:1209.2918
-#
-#Rusu, C. V. and Florian, R. V. (2010), A new spike train metric, BMC Neuroscience
-#11(Suppl. 1), P169. Nineteenth Annual Computational Neuroscience Meeting:
-#CNS*2010.
-################################################################################
-#
-#Input:        T1, T2: two sorted, non-empty spike trains
-#              a, b: some bounds of the spike trains
-#
-#Output:       the distance do
-#
-################################################################################
-#
-# (C) R. V. Florian & C. V. Rusu, 2012
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
-# of the Software, and to permit persons to whom the Software is furnished to do
-# so, subject to the following conditions:
-#
-# 1. If you publish scientific papers based on work that uses the Software, you
-# should consider citing within these papers the following:
-# Rusu, C. V. and Florian, R. V. (2010), A new spike train metric,
-# BMC Neuroscience 11(Suppl. 1), P169. Nineteenth Annual Computational Neuroscience Meeting:
-# CNS*2010.
-# 2. If you create derivative works using the Sofware and these works have an associated
-# list of contributors, you must attribute the work of R. V. Florian and C. V. Rusu according
-# to the relevance of the Software to the derivative works.
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-# PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
-# FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT
-# OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-#
-################################################################################
+'''
+An optimized algorithm for computing the modulus-metric distance do between
+two spike trains T1 and T2.
+
+For more information, please see the folowing papers:
+
+Rusu, C. V. and Florian, R. V, A new class of metrics for spike trains, submitted.
+Preprint: arXiv:1209.2918
+
+Rusu, C. V. and Florian, R. V. (2010), A new spike train metric, BMC Neuroscience
+11(Suppl. 1), P169. Nineteenth Annual Computational Neuroscience Meeting:
+CNS*2010.
+###############################################################################
+
+Input:        T1, T2: two sorted, non-empty spike trains
+              a, b: some bounds of the spike trains
+
+Output:       the distance do
+
+###############################################################################
+
+ (C) R. V. Florian & C. V. Rusu, 2012
+
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+ of the Software, and to permit persons to whom the Software is furnished to do
+ so, subject to the following conditions:
+
+ 1. If you publish scientific papers based on work that uses the Software, you
+ should consider citing within these papers the following:
+ Rusu, C. V. and Florian, R. V. (2010), A new spike train metric,
+ BMC Neuroscience 11(Suppl. 1), P169. Nineteenth Annual Computational Neuroscience Meeting:
+ CNS*2010.
+ 2. If you create derivative works using the Sofware and these works have an associated
+ list of contributors, you must attribute the work of R. V. Florian and C. V. Rusu according
+ to the relevance of the Software to the derivative works.
+
+ The above copyright notice and this permission notice shall be included in all
+ copies or substantial portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+ INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+ PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+ FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT
+ OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ DEALINGS IN THE SOFTWARE.
+ '''
+
 
 import numpy as np
 
 
 def modulus_metric(T1, T2, a, b):
-    #T1 and T2 are ordered, nonempty sets of real numbers, indexed starting from 0.
-    #i1 and i2 are the indices of the currently processed spikes in the two spike
-    #trains. p1 and p2 are the indices of the previously processed spikes in the
-    #two spike trains. p is the index of the spike train to which the previously
-    #processed spike belonged (1 or 2), after at least one spike has been processed,
-    #or 0 otherwise.
+    '''
+    T1 and T2 are ordered, nonempty sets of real numbers, indexed starting from 0.
+    i1 and i2 are the indices of the currently processed spikes in the two spike
+    trains. p1 and p2 are the indices of the previously processed spikes in the
+    two spike trains. p is the index of the spike train to which the previously
+    processed spike belonged (1 or 2), after at least one spike has been processed,
+    or 0 otherwise.
+    '''
 
     def d(t,T,i):
-        #Input:  a timing t, a sorted spike train T and an index i of a spike in T
-        #        such that either t <= T[i] or i is the index of the last spike of T
-        #Output: the distance d(t, T) between a timing t and a spike train T
+        '''
+        Input:  a timing t, a sorted spike train T and an index i of a spike in T
+                such that either t <= T[i] or i is the index of the last spike of T
+        Output: the distance d(t, T) between a timing t and a spike train T
+        '''
         db = abs(T[i] - t)
         j = i - 1
         while j >= 0 and abs(T[j] - t) <= db:
@@ -173,7 +177,11 @@ def modulus_metric(T1, T2, a, b):
     return do
 
 
-def avg_pairwise_modulus(collection, start, end):
+def modulus_pwise(collection, start, end):
+    '''
+    Calculates the average pairwise modulus distance between a set of
+    spike trains.
+    '''
     count = len(collection)
     distances = []
     for i in range(count - 1):
