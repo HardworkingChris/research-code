@@ -1,4 +1,14 @@
-'''
+"""
+Modifications made by Achilleas Koutsou. List follows:
+
+- Original function renamed to `distance` to comply with the other modules
+in spikerlib.
+- Added `pairwise`, `pairwise_mp` and `interval` functions. See individual
+function docstrings for description.
+
+
+######################## Original documentation follows #######################
+
 An optimized algorithm for computing the modulus-metric distance do between
 two spike trains T1 and T2.
 
@@ -46,28 +56,30 @@ Output:       the distance do
  FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT
  OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  DEALINGS IN THE SOFTWARE.
- '''
+ """
 
 
 import numpy as np
+import multiprocessing
+import itertools
 
 
-def modulus_metric(T1, T2, a, b):
-    '''
+def distance(T1, T2, a, b):
+    """
     T1 and T2 are ordered, nonempty sets of real numbers, indexed starting from 0.
     i1 and i2 are the indices of the currently processed spikes in the two spike
     trains. p1 and p2 are the indices of the previously processed spikes in the
     two spike trains. p is the index of the spike train to which the previously
     processed spike belonged (1 or 2), after at least one spike has been processed,
     or 0 otherwise.
-    '''
+    """
 
     def d(t,T,i):
-        '''
+        """
         Input:  a timing t, a sorted spike train T and an index i of a spike in T
                 such that either t <= T[i] or i is the index of the last spike of T
         Output: the distance d(t, T) between a timing t and a spike train T
-        '''
+        """
         db = abs(T[i] - t)
         j = i - 1
         while j >= 0 and abs(T[j] - t) <= db:
@@ -177,18 +189,90 @@ def modulus_metric(T1, T2, a, b):
     return do
 
 
-def modulus_pwise(collection, start, end):
-    '''
+def _all_dist_to_end(args):
+    """
+    Helper function for parallel pairwise distance calculations.
+    """
+    idx = args[0]
+    spiketrains = args[1]
+    start = args[2]
+    end = args[3]
+    num_spiketrains = len(spiketrains)
+    distances = []
+    for jdx in range(idx+1, num_spiketrains):
+        dist = distance(spiketrains[idx], spiketrains[jdx], start, end)
+        distances.append(dist)
+    return distances
+
+
+def pairwise_mp(spiketrains, start, end):
+    """
     Calculates the average pairwise modulus distance between a set of
     spike trains.
-    '''
-    count = len(collection)
+    Uses Python's multiprocessing.Pool() to run each pairwise distance
+    calculation in parallel.
+    """
+    count = len(spiketrains)
+    distances = []
+    idx_all = range(count - 1)
+    pool = multiprocessing.Pool()
+    distances_nested = pool.map(_all_dist_to_end,
+                                zip(idx_all, itertools.repeat(spiketrains),
+                                    itertools.repeat(start),
+                                    itertools.repeat(end)))
+    distances = []
+    pool.close()
+    pool.join()
+    for dn in distances_nested:
+        distances.extend(dn)
+    return np.mean(distances)
+
+
+def pairwise(spiketrains, start, end):
+    """
+    Calculates the average pairwise modulus distance between a set of
+    spike trains.
+    """
+    count = len(spiketrains)
     distances = []
     for i in range(count - 1):
         for j in range(i+1, count):
-            dist = modulus_metric(collection[i], collection[j], start, end)
-            distances.append(dist)
+            dist_ij = distance(spiketrains[i], spiketrains[j], start, end)
+            distances.append(dist_ij)
     return np.mean(distances)
+
+
+def interval(inputspikes, outputspikes, start, end, mp=True):
+    """
+    Calculates the mean pairwise modulus distance in intervals defined
+    by a separate spike train. This function is used to calculate the distance
+    between *input* spike trains based on the interspike intervals of the
+    *output* spike train. The result is the distance between the input spikes
+    that caused each response.
+
+    inputspikes     A set of spike trains whose pairwise distances will
+                    be calculated.
+
+    outputspikes    A single spike train to be used to calculate the intervals.
+
+    start           The start time of the spike trains.
+
+    end             The end time of the spike trains.
+
+    mp              Set to True to use the multiprocessing implementation of
+                    the pairwise calculation function or False to use the
+                    single process version (default: True)
+    """
+    modists = []
+    pairwise_func = pairwise_mp if mp else pairwise
+    for prv, nxt in zip(outputspikes[:-1], outputspikes[1:]):
+        interval_inputs = []
+        for insp in inputspikes:
+            interval_inputs.append(insp[(prv < insp) & (insp <= nxt)])
+        mod = pairwise_func(interval_inputs, start, end)
+        modists.append(mod)
+    return modists
+
 
 
 #Sample usage:
