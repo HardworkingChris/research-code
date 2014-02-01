@@ -1,0 +1,13 @@
+spikerlib_setup.py
+spikerlib/__init__.py
+spikerlib/tools.py
+spikerlib/variability.py
+spikerlib.egg-info/PKG-INFO
+spikerlib.egg-info/SOURCES.txt
+spikerlib.egg-info/dependency_links.txt
+spikerlib.egg-info/top_level.txt
+spikerlib/metrics/__init__.py
+spikerlib/metrics/corrcoef.py
+spikerlib/metrics/kreuz.py
+spikerlib/metrics/modulus_metric.py
+spikerlib/metrics/victor_purpura.py
