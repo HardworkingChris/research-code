@@ -9,7 +9,11 @@ def corrcoef_spiketrains(spikes, b=0.001, duration=None):
     '''
     Calculates the mean correlation coefficient between a set of spike trains
     after being binned with bin width `b`.
+
+    NB: Empty spike trains are discarded.
     '''
+    # remove empty spike trains
+    spikes = [sp for sp in spikes if len(sp)]
     bintimes = times_to_bin_multi(spikes, b, duration)
     correlations = np.corrcoef(bintimes)
     return correlations
@@ -23,21 +27,23 @@ def interval(inputspikes, outputspikes, b=0.001, duration=None):
     of the *output* spike train. The result is therefore the distance between
     the input spikes that caused each response.
 
-    inputspikes     A set of spike trains whose pairwise distance will be
-                    calculated
+    Parameters
+    ----------
+    inputspikes : A set of spike trains whose pairwise distance will be
+        calculated
 
-    outputspikes    A single spike train to be used to calculate the
-                    intervals
+    outputspikes : A single spike train to be used to calculate the
+        intervals
 
-    b               Bin width
+    b : Bin width
 
-    duration        Duration of the simulation or spike train
-                        (defaults to last input or output spike)
+    duration : Duration of the simulation or spike train
+        (defaults to last input or output spike)
 
     '''
     b = float(b)
     if duration is None:
-        duration = max(max(t) for t in inputspikes)
+        duration = max(max(t) for t in inputspikes if len(t))
         duration = max((duration, max(outputspikes)))
     corrs = []
     for prv, nxt in zip(outputspikes[:-1], outputspikes[1:]):
