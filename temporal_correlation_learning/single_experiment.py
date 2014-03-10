@@ -11,16 +11,19 @@ gK = 9*msiemens
 threshold = EmpiricalThreshold(threshold=15*mV, refractory=2*ms)
 
 # Input parameters
-taue = 15*ms
+taue = 5*ms
 taui = 5*ms
 EExc = 0*mV
 EInh = -80*mV
-WExc = 800*nS
-WInh = 50*nS
+WExc = 10*usiemens
+WInh = 50*nsiemens
 
 eqs='''
-    dV/dt=(-gNa*m**3*h*(V-ENa)-gK*n**4*(V-EK)-gL*(V-EL)-\
-                            gExc*(V-EExc)-gInh*(V-EInh)+Iapp)/Cm : volt
+    dV/dt=(-gNa*m**3*h*(V-ENa)\
+            -gK*n**4*(V-EK)-gL*(V-EL)\
+            -gExc*(V-EExc)\
+            -gInh*(V-EInh)\
+            +Iapp)/Cm : volt
 
     m=alpham/(alpham+betam) : 1
 
@@ -51,8 +54,26 @@ neuron = NeuronGroup(1, eqs, threshold=threshold, method='RK')
 
 neuron.V = -70*mV
 
-inputs = PoissonGroup(20, rates=20*Hz)
-exc_conn = Connection(inputs, neuron, 'gExc', weight=WExc)
+# delays
+B1, A1, A2, A3 = 5*ms, 20*ms, 30*ms, 40*ms
+target_delay = A2-B1  # delay to be learned by neuron
+
+spikes_A = [(0, 10*ms), (0, 115*ms), (0, 300*ms), (0, 450*ms)]
+spikes_B = [(1, 10*ms), (1, 130*ms), (1, 335*ms), (1, 475*ms)]
+inputs = SpikeGeneratorGroup(2, spikes_A+spikes_B)
+synapse_A = Synapses(inputs[0], neuron, model="w : siemens", pre="gExc_post += w")
+synapse_A[:,:] = 3
+synapse_A.w = WExc
+synapse_A.delay[0] = A1
+synapse_A.delay[1] = A2
+synapse_A.delay[2] = A3
+
+synapse_B = Synapses(inputs[1], neuron, model="w : siemens", pre="gExc_post += w")
+synapse_B[:,:] = 1
+synapse_B.w = WExc
+synapse_B.delay[0] = B1
+
+
 
 vtrace = StateMonitor(neuron, 'V', record=True)
 mtrace = StateMonitor(neuron, 'm', record=True)
@@ -60,17 +81,17 @@ htrace = StateMonitor(neuron, 'h', record=True)
 ntrace = StateMonitor(neuron, 'n', record=True)
 exc_trace = StateMonitor(neuron, 'gExc', record=True)
 
-run(1*second)
+run(1.0*second)
 
-subplot(311)
+subplot(211)
 plot(vtrace.times, vtrace[0], label="V(t)")
 legend()
-subplot(312)
-plot(mtrace.times, mtrace[0], label="m(t)")
-plot(htrace.times, htrace[0], label="h(t)")
-plot(ntrace.times, ntrace[0], label="n(t)")
-legend()
-subplot(313)
+#subplot(312)
+#plot(mtrace.times, mtrace[0], label="m(t)")
+#plot(htrace.times, htrace[0], label="h(t)")
+#plot(ntrace.times, ntrace[0], label="n(t)")
+#legend()
+subplot(212)
 plot(exc_trace.times, exc_trace[0], label="gExc")
 legend()
 show()
