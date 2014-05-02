@@ -8,7 +8,7 @@ ENa = 55*mV
 EK = -90*mV
 gNa = 35*msiemens
 gK = 9*msiemens
-threshold = EmpiricalThreshold(threshold=15*mV, refractory=2*ms)
+threshold = EmpiricalThreshold(threshold=15*mV, refractory=2*ms, state="V")
 
 # Input parameters
 taue = 5*ms
@@ -81,7 +81,15 @@ htrace = StateMonitor(neuron, 'h', record=True)
 ntrace = StateMonitor(neuron, 'n', record=True)
 exc_trace = StateMonitor(neuron, 'gExc', record=True)
 
+spike_monitor = SpikeMonitor(neuron)
+
 run(1.0*second)
+
+print("Number of spikes fired: %i" % (spike_monitor.nspikes))
+if spike_monitor.nspikes <= 10:
+    print("Spike times follow:")
+    print(', '.join([str(sp) for sp in spike_monitor[0]]))
+
 
 subplot(211)
 plot(vtrace.times, vtrace[0], label="V(t)")
