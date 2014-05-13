@@ -13,7 +13,7 @@ tau_mem = 10*msecond
 N_in = 10
 f_in = 10*Hz
 V_inp = 0.3*mV
-nrns = NeuronGroup(1,lif_eq,threshold=V_th,reset=V_reset,refractory=t_refr
+nrns = NeuronGroup(1,lif_eq,threshold=V_th,reset=V_reset,refractory=t_refr)
 
 
 
