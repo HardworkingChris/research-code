@@ -1,15 +1,16 @@
 from brian import *
-import neurotools as nt
+from spikerlib.tools import SynchronousInputGroup
 
-dura = 0.1*second
+dura = 0.5*second
 r = 100*Hz
 s = 1
-j = 10*ms
+j = 1*ms
 n = 20
 
-generator = nt.SynchronousInputGroup(n,r,s,j)
-inp_gens = generator()
-inp = MultipleSpikeGeneratorGroup(inp_gens)
+print("Constructing spike generator ...")
+inp_gen = SynchronousInputGroup(n,r,s,j)
+print("Setting up SpikeGeneratorGroup ...")
+inp = SpikeGeneratorGroup(n, inp_gen())
 
 inp_mon = SpikeMonitor(inp)
 run(dura, report='stdout')
