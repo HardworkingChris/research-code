@@ -14,7 +14,7 @@ import collections
 from numpy import (array, diff, floor, zeros, mean, std, shape,
                    random, cumsum, histogram, where, arange, divide, exp,
                    count_nonzero, bitwise_and, append, ones, flatnonzero,
-                   ndarray, convolve, linspace)
+                   ndarray, convolve, linspace, empty, copy)
 from matplotlib.mlab import normpdf
 import random as rnd
 from warnings import warn
@@ -182,7 +182,7 @@ class SynchronousInputGroup:
             yield t + jitt_variate
 
 
-def gen_input_groups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
+def gen_input_groups(N_in, f_in, S_in, sigma, duration):
     """
     Generate two input groups, one for synchronous spikes and the other for
     random (Poisson), independent spiking.
@@ -195,11 +195,7 @@ def gen_input_groups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
     syncGroup = PoissonGroup(0, 0)  # dummy nrngrp
     randGroup = PoissonGroup(0, 0)
     if N_sync:
-        pulse_train = []
-        pulse_time = rnd.expovariate(f_in)
-        while pulse_time <= duration:
-            pulse_train.append(pulse_time)
-            pulse_time += rnd.expovariate(f_in)
+        pulse_train = poisson_times(f_in, duration)
         sync_spikes = []
         pp = PulsePacket(0*second, 1, 0*second)  # dummy pp
         for pt in pulse_train:
@@ -217,6 +213,41 @@ def gen_input_groups(N_in, f_in, S_in, sigma, duration, dt=0.1*msecond):
         randGroup = PoissonGroup(N_rand, rates=f_in)
     return syncGroup, randGroup
 
+def poisson_times(f_in, duration):
+    poisstrain = []
+    spiketime = rnd.expovariate(f_in)
+    while spiketime < duration:
+        poisstrain.append(spiketime)
+        spiketime += rnd.expovariate(f_in)
+    return array(poisstrain)
+
+def fast_synchronous_input_gen(N_in, f_in, S_in, sigma, duration):
+    """
+    Generate an input group which contains `N_in*S_in` synchronous spike trains,
+    with jitter `sigma`, and `1-N_in*S_in` independent (Poisson) spike trains.
+    """
+    if nobrian:
+        print("Error: fast_synchronous_input_gen requires Brian",
+                file=sys.stderr)
+        return None
+    N_sync = int(N_in*S_in)
+    N_rand = N_in-N_sync
+    spikearray = empty(N_in, dtype=object)
+    for trainidx in range(0, N_rand):
+        spikearray[trainidx] = poisson_times(f_in, duration)
+    if N_sync:
+        synctrain = poisson_times(f_in, duration)
+        for trainidx in range(N_rand, N_in):
+            spikearray[trainidx] = copy(synctrain)
+            if sigma:
+                jitter = random.normal(0, sigma, len(synctrain))
+                spikearray[trainidx] += jitter
+    # convert to [(i, t) ...] format for SpikeGeneratorGroup
+    # also filter negative spike times
+    spiketuples = []
+    for idx, spiketimes in enumerate(spikearray):
+        spiketuples.extend([(idx, st) for st in spiketimes if st > 0])
+    return SpikeGeneratorGroup(N=N_in, spiketimes=spiketuples)
 
 def _run_calib(nrndef, N_in, f_in, w_in, input_configs, active_idx):
     clear(True)
@@ -480,6 +511,7 @@ def npss(mem, spiketrain, v0, vth, tau, w, dt=0.1*msecond):
     tau = float(tau)
     w = float(w)
     dt = float(dt)
+    w_dt = int(w/dt)
     first_spike = spiketrain[0]
     first_spike_dt = int(first_spike/dt)
     vr = mem[first_spike_dt+1]  # reset potential
@@ -497,8 +529,8 @@ def npss(mem, spiketrain, v0, vth, tau, w, dt=0.1*msecond):
             (1-exp(-(nxt-prv)/tau))
     high_bound = v0+(vr-v0)*exp(-time_since_spike/tau)
     low_bound = vr+low_input*(1-exp(-time_since_spike/tau))
-    window_starts = spiketrain-w
-    window_starts_dt = (window_starts[1:]/dt).astype(int)
+    spiketrain_dt = (spiketrain/dt).astype(int)
+    window_starts_dt = spiketrain_dt-w_dt
     # there's some redundant processing here for clarity
     # all values, mem, low and high bound at (t_i-w) are converted to slopes by
     # calculating (vth-x)/w, which means we could just avoid it and the
@@ -592,7 +624,7 @@ def sta(v, spiketrain, w, dt=0.0001*second):
 def sync_inp(n, rate, s, sigma, dura, dt=0.0001*second):
     '''
     Generates synchronous spike trains and returns spiketimes compatible
-    with Brian's MultipleSpikeGeneratorGroup function.
+    with Brian's SpikeGeneratorGroup function.
     In other words, the array returned by this module should be passed as the
     argument to the MulitpleSpikeGeneratorGroup in order to define it as an
     input group.
