@@ -21,3 +21,5 @@ tmp/
 .directory
 .idea
 
+# logfiles
+.log
