@@ -22,4 +22,4 @@ tmp/
 .idea
 
 # logfiles
-.log
+*.log
