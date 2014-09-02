@@ -1,5 +1,11 @@
 from __future__ import division
-from brian import *
+from brian import (
+    NeuronGroup, SpikeGeneratorGroup, Synapses,
+    EmpiricalThreshold, SpikeMonitor, StateMonitor,
+    second, uF, msiemens, usiemens, nsiemens, mV, ms,
+    run
+)
+import matplotlib.pyplot as plt
 
 Cm = 1*uF # /cm**2
 gL = 0.1*msiemens
@@ -91,16 +97,16 @@ if spike_monitor.nspikes <= 10:
     print(', '.join([str(sp) for sp in spike_monitor[0]]))
 
 
-subplot(211)
-plot(vtrace.times, vtrace[0], label="V(t)")
-legend()
+plt.subplot(211)
+plt.plot(vtrace.times, vtrace[0], label="V(t)")
+plt.legend()
 #subplot(312)
 #plot(mtrace.times, mtrace[0], label="m(t)")
 #plot(htrace.times, htrace[0], label="h(t)")
 #plot(ntrace.times, ntrace[0], label="n(t)")
 #legend()
-subplot(212)
-plot(exc_trace.times, exc_trace[0], label="gExc")
-legend()
-show()
+plt.subplot(212)
+plt.plot(exc_trace.times, exc_trace[0], label="gExc")
+plt.legend()
+plt.show()
 
