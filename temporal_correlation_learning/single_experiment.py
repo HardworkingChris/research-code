@@ -25,35 +25,35 @@ WExc = 10*usiemens
 WInh = 50*nsiemens
 
 eqs='''
-    dV/dt=(-gNa*m**3*h*(V-ENa)\
-            -gK*n**4*(V-EK)-gL*(V-EL)\
-            -gExc*(V-EExc)\
-            -gInh*(V-EInh)\
-            +Iapp)/Cm : volt
+dV/dt=(-gNa*m**3*h*(V-ENa)\
+    -gK*n**4*(V-EK)-gL*(V-EL)\
+    -gExc*(V-EExc)\
+    -gInh*(V-EInh)\
+    +Iapp)/Cm : volt
 
-    m=alpham/(alpham+betam) : 1
+m=alpham/(alpham+betam) : 1
 
-    alpham=-0.1/mV*(V+35*mV)/(exp(-0.1/mV*(V+35*mV))-1)/ms : Hz
+alpham=-0.1/mV*(V+35*mV)/(exp(-0.1/mV*(V+35*mV))-1)/ms : Hz
 
-    betam=4*exp(-(V+60*mV)/(18*mV))/ms : Hz
+betam=4*exp(-(V+60*mV)/(18*mV))/ms : Hz
 
-    dh/dt=5*(alphah*(1-h)-betah*h) : 1
+dh/dt=5*(alphah*(1-h)-betah*h) : 1
 
-    alphah=0.07*exp(-(V+58*mV)/(20*mV))/ms : Hz
+alphah=0.07*exp(-(V+58*mV)/(20*mV))/ms : Hz
 
-    betah=1./(exp(-0.1/mV*(V+28*mV))+1)/ms : Hz
+betah=1./(exp(-0.1/mV*(V+28*mV))+1)/ms : Hz
 
-    dn/dt=5*(alphan*(1-n)-betan*n) : 1
+dn/dt=5*(alphan*(1-n)-betan*n) : 1
 
-    alphan=-0.01/mV*(V+34*mV)/(exp(-0.1/mV*(V+34*mV))-1)/ms : Hz
+alphan=-0.01/mV*(V+34*mV)/(exp(-0.1/mV*(V+34*mV))-1)/ms : Hz
 
-    betan=0.125*exp(-(V+44*mV)/(80*mV))/ms : Hz
+betan=0.125*exp(-(V+44*mV)/(80*mV))/ms : Hz
 
-    dgExc/dt = -gExc*(1./taue) : siemens
+dgExc/dt = -gExc*(1./taue) : siemens
 
-    dgInh/dt = -gInh*(1./taui) : siemens
+dgInh/dt = -gInh*(1./taui) : siemens
 
-    Iapp : amp
+Iapp : amp
 
 '''
 neuron = NeuronGroup(1, eqs, threshold=threshold, method='RK')
@@ -67,14 +67,16 @@ target_delay = A2-B1  # delay to be learned by neuron
 spikes_A = [(0, 10*ms), (0, 115*ms), (0, 300*ms), (0, 450*ms)]
 spikes_B = [(1, 10*ms), (1, 130*ms), (1, 335*ms), (1, 475*ms)]
 inputs = SpikeGeneratorGroup(2, spikes_A+spikes_B)
-synapse_A = Synapses(inputs[0], neuron, model="w : siemens", pre="gExc_post += w")
+synapse_A = Synapses(inputs[0], neuron,
+                     model="w : siemens", pre="gExc_post += w")
 synapse_A[:,:] = 3
 synapse_A.w = WExc
 synapse_A.delay[0] = A1
 synapse_A.delay[1] = A2
 synapse_A.delay[2] = A3
 
-synapse_B = Synapses(inputs[1], neuron, model="w : siemens", pre="gExc_post += w")
+synapse_B = Synapses(inputs[1], neuron,
+                     model="w : siemens", pre="gExc_post += w")
 synapse_B[:,:] = 1
 synapse_B.w = WExc
 synapse_B.delay[0] = B1
