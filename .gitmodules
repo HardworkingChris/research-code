@@ -1,3 +1,6 @@
 [submodule "ou_lif"]
 	path = ou_lif
 	url = git@bitbucket.org:achilleas-k/ou-lif.git
+[submodule "slope_vs_dist"]
+	path = slope_vs_dist
+	url = git@bitbucket.org:achilleas-k/slope-vs-dist.git
