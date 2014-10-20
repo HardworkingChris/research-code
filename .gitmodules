@@ -10,6 +10,3 @@
 [submodule "connectivity"]
 	path = connectivity
 	url = git@bitbucket.org:achilleas-k/connectivity
-[submodule "delay_learning"]
-	path = delay_learning
-	url = git@bitbucket.org:achilleas-k/delay-learning-brian
