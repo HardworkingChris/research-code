@@ -15,4 +15,4 @@
 	url = git@bitbucket.org:achilleas-k/delay-learning-brian
 [submodule "networks"]
 	path = networks
-	url = git@bitbucket.org:achilleas-k/brian-networks
+	url = git@bitbucket.org:achilleas-k/networks-brian
