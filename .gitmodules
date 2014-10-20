@@ -7,3 +7,6 @@
 [submodule "spikerlib"]
 	path = spikerlib
 	url = git@bitbucket.org:achilleas-k/spikerlib
+[submodule "connectivity"]
+	path = connectivity
+	url = git@bitbucket.org:achilleas-k/connectivity
