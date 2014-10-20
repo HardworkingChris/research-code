@@ -4,3 +4,6 @@
 [submodule "slope_vs_dist"]
 	path = slope_vs_dist
 	url = git@bitbucket.org:achilleas-k/slope-vs-dist.git
+[submodule "spikerlib"]
+	path = spikerlib
+	url = git@bitbucket.org:achilleas-k/spikerlib
