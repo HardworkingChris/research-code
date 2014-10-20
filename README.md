@@ -6,4 +6,4 @@ Most code contained in this repository is licensed under the Apache License v2.0
 See the LICENSE file for details.
 
 Most of this repository has now been split into submodules.
-The submodule references point to a private repository by default, but public versions of each repository are also available on github.
+The submodule references point to a private repository, but public versions of each repository are also available on github.
