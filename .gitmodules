@@ -16,3 +16,6 @@
 [submodule "networks"]
 	path = networks
 	url = git@bitbucket.org:achilleas-k/brian-networks
+[submodule "npss_playground"]
+	path = npss_playground
+	url = git@bitbucket.org:achilleas-k/npss-playground.git
