@@ -1,3 +1,14 @@
+"""
+
+STDP example in Brian
+=====================
+
+Simulation of a single LIF neuron driven by 250 input spike trains.
+Connection weights are adjusted using STDP. The weight changes are recorded
+and plotted at the end of the simulation.
+
+"""
+
 from brian import *
 
 Ninputs = 250
@@ -33,13 +44,11 @@ stdp = STDP(connections, stdp_eqs,
 voltmon = StateMonitor(neuron, "V", record=True)
 spikemon = SpikeMonitor(neuron)
 
-#decaclock = Clock(dt=10*ms)
 weightmon = []
-nsp = 0
 
 @network_operation
 def record_weights(clock):
-    if clock.t in spikemon.spiketimes[0]:
+    if clock.t in spikemon.spiketimes[0] or clock.t == 0:
         weightmon.append(connections[:,0].todense())
 
 run(5*second, report="stdout")
@@ -47,14 +56,32 @@ run(5*second, report="stdout")
 voltmon.insert_spikes(spikemon, 10*mV)
 
 weightmon = array(weightmon)
+
 figure("voltage")
-plot(voltmon.times, voltmon[0])
+plot(voltmon.times, voltmon[0]*1000)
+title("Somatic membrane potential")
+xlabel("time (s)")
+ylabel("membrane potential (mV)")
+
+figure("weight histogram (t0)")
+hist(weightmon[0]*1000)
+title("Histogram of synaptic weights (before simulation)")
+xlabel("Weights (mV)")
+
 figure("weight histogram")
-hist(connections[:,0])
+hist(connections[:,0]*1000)
+title("Histogram of synaptic weights (end of simulation)")
+xlabel("Weights (mV)")
+
 figure("weights across time")
+spiketimes = spikemon.spiketimes[0]
+spiketimes = insert(spiketimes, 0, 0)  # t=0 for initial weights
 mweight = mean(weightmon, axis=1)
 sweight = std(weightmon, axis=1)
-plot(spikemon.spiketimes[0], mweight)
-plot(spikemon.spiketimes[0], mweight+sweight, "r--")
-plot(spikemon.spiketimes[0], mweight-sweight, "r--")
+plot(spiketimes, mweight*1000)
+plot(spiketimes, (mweight+sweight)*1000, "r--")
+plot(spiketimes, (mweight-sweight)*1000, "r--")
+title("Mean and stdev of synaptic weights across time")
+xlabel("time (s)")
+ylabel("synaptic weight (mV)")
 show()
