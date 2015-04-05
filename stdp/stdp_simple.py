@@ -1,3 +1,17 @@
+"""
+
+Simple (1 spike) STDP example in Brian
+======================================
+
+Simple example of a single instance of synaptic plasticity, using the
+standard STDP rule in Brian.
+A single LIF neuron is stimulated with 6 spikes. The weights and parameters are
+calibrated such that the 5th spike triggers a response in the post-synaptic
+neuron, in order to show both LTP (on the inputs that fired before the output
+spike) and LTD (on the 6th input that fires after the output spike).
+
+"""
+
 from brian import *
 
 eqs = "dV/dt = (Vrest-V)/tau : volt"
@@ -41,7 +55,13 @@ run(0.75*second)
 print(connections[:,0])
 
 figure("voltage")
-plot(voltmon.times, voltmon[0])
-figure("weights")
-hist(connections.W[:,0])
+plot(voltmon.times, voltmon[0]*1000)
+title("Somatic membrane potential")
+xlabel("time (s)")
+ylabel("membrane potential (mV)")
+
+figure("weight histogram")
+hist(connections.W[:,0]*1000)
+title("Histogram of synaptic weights")
+xlabel("Weights (mV)")
 show()
