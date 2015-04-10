@@ -6,7 +6,7 @@ import numpy as np
 import random as rnd
 import matplotlib.pyplot as plt
 
-duration = 200*ms
+duration = 2000*ms
 inspikes = []
 while np.sum(inspikes) < float(duration):
     inspikes.append(rnd.expovariate(500*Hz))
@@ -69,18 +69,30 @@ if __name__=="__main__":
     resetvmon, resetthmon, resetspikemon = pif_reset()
     print("Finished 2")
 
-    plt.figure()
-    plt.subplot(3, 1, 1)
-    plt.plot(thvmon.times, thvmon[0])
-    plt.plot(ththmon.times, ththmon[0], "k--")
-    plt.subplot(3, 1, 2)
-    plt.plot(resetvmon.times, resetvmon[0], "r")
-    plt.plot(resetthmon.times, resetthmon[0], "k--")
-    plt.subplot(3, 1, 3)
-    for sp in thspikemon[0]:
-        plt.plot([sp]*2, [0, 0.5], "b")
-    for sp in resetspikemon[0]:
-        plt.plot([sp]*2, [0.5, 1], "r")
-    plt.axis(xmin=0, xmax=float(duration))
+    fig = plt.figure()
+    ax1 = fig.add_subplot(3, 1, 1)
+    ax1.set_title("Threshold jump model")
+    ax1.plot(thvmon.times, thvmon[0])
+    ax1.plot(ththmon.times, ththmon[0], "k--")
+    ax1.set_ylabel("membrane potential (V)")
 
+    ax2 = fig.add_subplot(3, 1, 2)
+    ax2.set_title("Reset model")
+    ax2.plot(resetvmon.times, resetvmon[0], "r")
+    ax2.plot(resetthmon.times, resetthmon[0], "k--")
+    ax2.set_ylabel("membrane potential (V)")
+
+    ax3 = fig.add_subplot(3, 1, 3)
+    ax3.set_title("Spike times and deviations")
+    ax3b = ax3.twinx()
+    deviations = []
+    for spth, sprst in zip(thspikemon[0], resetspikemon[0]):
+        ax3.plot([spth]*2, [0, 0.5], "b")
+        ax3.plot([sprst]*2, [0.5, 1], "r")
+        deviations.append(abs(spth-sprst))
+    ax3.axis(xmin=0, xmax=float(duration))
+
+    ax3b.plot(thspikemon[0], deviations, "k--")
+    ax3.set_xlabel("time (s)")
+    ax3b.set_ylabel("spike time deviation (s)")
     plt.show()
