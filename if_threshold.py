@@ -55,11 +55,17 @@ if __name__=="__main__":
     resetvmon, resetthmon, resetspikemon = pif_reset()
     print("Finished 2")
 
+    plt.figure()
+    plt.subplot(3, 1, 1)
+    plt.plot(thvmon.times, thvmon[0])
+    plt.plot(ththmon.times, ththmon[0], "k--")
+    plt.subplot(3, 1, 2)
+    plt.plot(resetvmon.times, resetvmon[0], "r")
+    plt.plot(resetthmon.times, resetthmon[0], "k--")
+    plt.subplot(3, 1, 3)
+    for sp in thspikemon[0]:
+        plt.plot([sp]*2, [0, 1], "b")
+    for sp in resetspikemon[0]:
+        plt.plot([sp]*2, [0, 1], "r")
 
-    # plt.figure()
-    # plt.plot(vmon.times, vmon[0])
-    # plt.plot(thmon.times, thmon[0], "k--")
-    # for sp in spikemon[0]:
-    #     plt.plot([sp]*2, [0, 0.004], "k")
-
-    # plt.show()
+    plt.show()
