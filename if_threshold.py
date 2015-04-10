@@ -1,7 +1,7 @@
 from brian import (Network, NeuronGroup, SpikeGeneratorGroup, Connection,
                    StateMonitor, SpikeMonitor,
                    defaultclock,
-                   mV, ms, Hz)
+                   mV, ms, Hz, nA, Mohm)
 import numpy as np
 import random as rnd
 import matplotlib.pyplot as plt
@@ -18,8 +18,10 @@ inputgrp = SpikeGeneratorGroup(1, spiketuples)
 def pif_th():
     defaultclock.reinit()
     sim = Network()
+    I = 0.2*nA
+    R = 1*Mohm
     lifeq = """
-    V : volt
+    dV/dt = I*R/ms : volt
     Vth : volt
     """
     thstep = 15*mV
@@ -28,13 +30,14 @@ def pif_th():
     nrn.Vth = thstep
     sim.add(nrn)
 
-    connection = Connection(inputgrp, nrn, state="V", weight=0.5*mV)
+    #connection = Connection(inputgrp, nrn, state="V", weight=0.5*mV)
+    #sim.add(inputgrp, connection)
 
     vmon = StateMonitor(nrn, "V", record=True)
     thmon = StateMonitor(nrn, "Vth", record=True)
     spikemon = SpikeMonitor(nrn, record=True)
 
-    sim.add(inputgrp, connection, vmon, thmon, spikemon)
+    sim.add(vmon, thmon, spikemon)
     sim.run(duration)
     return vmon, thmon, spikemon
 
@@ -42,8 +45,10 @@ def pif_th():
 def pif_reset():
     defaultclock.reinit()
     sim = Network()
+    I = 0.2*nA
+    R = 1*Mohm
     lifeq = """
-    V : volt
+    dV/dt = I*R/ms : volt
     Vth : volt
     """
     thstep = 15*mV
@@ -52,13 +57,14 @@ def pif_reset():
     nrn.Vth = thstep
     sim.add(nrn)
 
-    connection = Connection(inputgrp, nrn, state="V", weight=0.5*mV)
+    #connection = Connection(inputgrp, nrn, state="V", weight=0.5*mV)
+    #sim.add(inputgrp, connection)
 
     vmon = StateMonitor(nrn, "V", record=True)
     thmon = StateMonitor(nrn, "Vth", record=True)
     spikemon = SpikeMonitor(nrn, record=True)
 
-    sim.add(inputgrp, connection, vmon, thmon, spikemon)
+    sim.add(vmon, thmon, spikemon)
     sim.run(duration)
     return vmon, thmon, spikemon
 
