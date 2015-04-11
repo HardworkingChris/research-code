@@ -2,9 +2,11 @@ from brian import (Network, NeuronGroup, StateMonitor, SpikeMonitor,
                    Connection,
                    mV, ms, Hz)
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 import spikerlib as sl
 import numpy as np
 import sys
+
 
 sim = Network()
 duration = 200*ms
@@ -20,7 +22,7 @@ lifnrn.V = Vreset
 sim.add(lifnrn)
 
 Nin = 200
-fin = 40*Hz
+fin = 80*Hz
 Sin = 0.6
 sigma = 0.0*ms
 weight = 0.1*mV
@@ -41,18 +43,20 @@ vmon.insert_spikes(spikemon, 40*mV)
 
 high, low = sl.tools.get_slope_bounds(spikemon[0], 0*mV, Vreset, Vth, tau, dt)
 high *= 1000
+thigh = np.arange(len(high))*dt*1000
 low *= 1000
+tlow = np.arange(len(low))*dt*1000
 Vth = float(Vth*1000)
 
 plt.figure()
 plt.plot(vmon.times*1000, vmon[0]*1000, label="$V(t)$")
 plt.plot(vmon.times*1000, np.zeros_like(vmon[0])+Vth, "k--", label="$V_{th}$")
-plt.plot(np.arange(0*dt, len(high)*dt, dt)*1000, high, color="0.25",
+plt.plot(thigh, high, color="0.25",
          label="bounds")
-plt.plot(np.arange(0*dt, len(low)*dt, dt)*1000,  low,  color="0.25")
+plt.plot(tlow,  low,  color="0.25")
 #plt.legend()
 
-for idx, sp in enumerate(spikemon[0], 1):
+for idx, sp in enumerate(spikemon[0][3:5], 1):
     sp *= 1000
     ws = sp-2
     vws = vmon[0][ws*10]*1000
@@ -60,11 +64,15 @@ for idx, sp in enumerate(spikemon[0], 1):
     plt.plot(ws, vws, 'k.', markersize=10)
     plt.plot(sp, Vth, 'k.', markersize=10)
     plt.annotate("$V(t_{}-w)$".format(idx), xy=(ws, vws),
-                 xytext=(ws+0.1, vws-1), backgroundcolor=(1,1,1,0.5))
+                 xytext=(ws-2, vws-2), backgroundcolor=(1,1,1,0.8))
     plt.annotate("$V(t_{})$".format(idx), xy=(sp, Vth),
-                 xytext=(sp+0.1, Vth+0.1), backgroundcolor=(1,1,1,0.5))
+                 xytext=(sp, Vth+1), backgroundcolor=(1,1,1,0.8))
+    plt.plot([ws, sp], [vws, Vth], 'b--')
+    currentAxis = plt.gca()
+    currentAxis.add_patch(Rectangle((ws, 0), 2, 15,
+                                    facecolor="red"))
 
+plt.axis(xmin=spikemon[0][2]*1000-5, xmax=spikemon[0][4]*1000+5)
 plt.xlabel("t (ms)")
 plt.ylabel("Membrane potential (mV)")
-
-plt.show()
+plt.savefig("npss_window.pdf")
