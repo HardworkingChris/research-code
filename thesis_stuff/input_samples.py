@@ -19,7 +19,7 @@ for i, c in enumerate(configs):
     spikes = group.get_spiketimes()
     plt.clf()
     for sp in spikes:
-        plt.plot(sp[1], sp[0], 'b.', markersize=3)
+        plt.plot(sp[1], sp[0], 'b.', markersize=2)
     # plt.title(r"$S_{{in}}=~{},~\sigma_{{in}}=~{}~\mathrm{{ms}}$".format(*c))
     xticks = plt.xticks()
     yticks = plt.yticks()
@@ -34,6 +34,7 @@ for i, c in enumerate(configs):
         plt.yticks(yticks[0], "")
         plt.xlabel("t (s)")
     filename = "input_sample_{}_{}".format(*c).replace(".", "")
-    plt.subplots_adjust(bottom=0.2)
+    plt.subplots_adjust(bottom=0.15, top=0.95, left=0.08, right=0.95)
+    plt.axis(xmin=0, xmax=1, ymin=0, ymax=50)
     plt.savefig(filename+".pdf")
     print("Saved {}".format(filename))
