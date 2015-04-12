@@ -7,7 +7,7 @@ from brian import (Network, NeuronGroup, SpikeMonitor, StateMonitor,
 import gc
 import matplotlib.pyplot as plt
 import numpy as np
-import multiprocessing as mp
+# import multiprocessing as mp
 import itertools as itt
 import spikerlib as sl
 
@@ -17,45 +17,45 @@ def runsim(Nin, weight, fout, sync):
     clear(True)
     gc.collect()
     defaultclock.reinit()
-    duration = 2*second
+    duration = 1*second
     lifeq = "dV/dt = -V/(10*ms) : volt"
-    nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV",
-              "refractory": 2*ms}
+    nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV"}
+              # "refractory": 2*ms}
     print("Calibrating {} {} {}".format(Nin, weight, fout))
     fin = sl.tools.calibrate_frequencies(nrndef, Nin, weight, syncconf, fout,
                                          Vth=15*mV, tau=10*ms)
+    print("Calibrated frequencies:")
+    print(", ".join(str(f) for f in fin))
     inputgroups = []
     connections = []
     neurons = []
-    voltagemons = []
-    spikemons = []
-    for fin_i, (sync_i, sigma_i) in zip(fin, syncconf):
-        neuron = NeuronGroup(len(fin), **nrndef)
+    Nneurons = len(fin)
+    neurons = NeuronGroup(Nneurons, **nrndef)
+    for idx in range(Nneurons):
+        fin_i = fin[idx]
+        sync_i, sigma_i = syncconf[idx]
         inputgrp = sl.tools.fast_synchronous_input_gen(Nin, fin_i,
                                                        sync_i, sigma_i,
                                                        duration)
         defaultclock.reinit()
-        neurons.append(neuron)
-        conn = Connection(inputgrp, neuron, state="V", weight=weight)
-        vmon = StateMonitor(neuron, "V", record=True)
-        spikemon = SpikeMonitor(neuron, record=True)
+        conn = Connection(inputgrp, neurons[idx], state="V", weight=weight)
         inputgroups.append(inputgrp)
         connections.append(conn)
-        voltagemons.append(vmon)
-        spikemons.append(spikemon)
-    sim.add(*neurons)
+    voltagemon = StateMonitor(neurons, "V", record=True)
+    spikemon = SpikeMonitor(neurons, record=True)
+    sim.add(neurons, voltagemon, spikemon)
     sim.add(*inputgroups)
     sim.add(*connections)
-    sim.add(*voltagemons)
-    sim.add(*spikemons)
     print("Running {} {} {}".format(Nin, weight, fout))
     sim.run(duration, report="stdout")
     mnpss = []
-    for vmon, smon, sync in zip(voltagemons, spikemons, syncconf):
-        if smon.nspikes:
-            npss = sl.tools.npss(vmon[0], smon[0], 0*mV, 15*mV, 10*ms, 2*ms)
-            if np.any(npss > 100):
-                break
+    for idx in range(Nneurons):
+        vmon = voltagemon[idx]
+        smon = spikemon[idx]
+        print("Desired firing rate: {}".format(fout))
+        print("Actual firing rate:  {}".format(len(smon)/duration))
+        if len(smon) > 0:
+            npss = sl.tools.npss(vmon, smon, 0*mV, 15*mV, 10*ms, 2*ms)
         else:
             npss = 0
         mnpss.append(np.mean(npss))
@@ -78,16 +78,19 @@ def runsim(Nin, weight, fout, sync):
 Nin = [100, 50, 60, 60, 200, 60]
 weight = [0.1*mV, 0.2*mV, 0.3*mV, 0.5*mV, 0.1*mV, 0.5*mV]
 fout = [5*Hz, 100*Hz, 10*Hz, 70*Hz, 10*Hz, 100*Hz]
-Sin = np.arange(0, 1.01, 0.1)
-sigma = np.arange(0, 4.1, 0.5)*ms
+Sin = np.arange(0, 1.01, 0.2)
+sigma = np.arange(0, 4.1, 1.0)*ms
 syncconf = [(s, j) for s, j in itt.product(Sin, sigma)]
 
 configurations = []
 for n, w, f in zip(Nin, weight, fout):
     configurations.append({"Nin": n, "weight": w, "fout": f, "sync": syncconf})
 
-pool = mp.Pool()
-print("Building pool")
-mppool = [pool.apply_async(runsim, kwds=c) for c in configurations]
-print("Getting results")
-results = [res.get() for res in mppool]
+# pool = mp.Pool()
+# print("Building pool")
+# mppool = [pool.apply_async(runsim, kwds=c) for c in configurations]
+# print("Getting results")
+# results = [res.get() for res in mppool]
+
+for conf in configurations:
+    runsim(**conf)
