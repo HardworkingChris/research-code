@@ -94,3 +94,6 @@ for n, w, f in zip(Nin, weight, fout):
 
 for conf in configurations:
     runsim(**conf)
+
+# TODO: Save input frequencies from calibration so simulations can be rerun.
+# TODO: Save data so plots can be redrawn.
