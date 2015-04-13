@@ -59,7 +59,7 @@ def save_data(key, npss):
         with open(NPSS_FILE, 'w') as npssfile:
             filedata[key] = npss  # don't care if overwriting existing item
             pickle.dump(filedata, npssfile)
-            print("Saved npss data for: {}".format(key))
+            print("Saved npss data for: {} {} {}".format(Nin, weight, fout))
         dflock.release()
 
 def runsim(Nin, weight, fout, sync):
@@ -67,7 +67,7 @@ def runsim(Nin, weight, fout, sync):
     clear(True)
     gc.collect()
     defaultclock.reinit()
-    duration = 2*second
+    duration = 5*second
     lifeq = "dV/dt = -V/(10*ms) : volt"
     nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV"}
               # "refractory": 2*ms}
