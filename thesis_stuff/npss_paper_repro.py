@@ -25,6 +25,8 @@ def load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
     try:
         with open(FREQUENCY_FILE) as freqfile:
             filedata = pickle.load(freqfile)
+    except IOError:
+        filedata = {}
     finally:
         fflock.release()
     fin = filedata.get(key, None)
@@ -34,11 +36,14 @@ def load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
                                              fout, Vth=15*mV, tau=10*ms)
         fflock.acquire()
         try:
-            with open(FREQUENCY_FILE, 'rw') as freqfile:
+            with open(FREQUENCY_FILE, 'r') as freqfile:
                 filedata = pickle.load(freqfile)
+        except IOError:
+            filedata = {}
+        finally:
+            with open(FREQUENCY_FILE, 'w') as freqfile:
                 filedata[key] = fin
                 pickle.dump(filedata, freqfile)
-        finally:
             fflock.release()
     return fin
 
