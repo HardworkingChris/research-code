@@ -23,3 +23,6 @@ tmp/
 
 # logfiles
 *.log
+
+# build directory
+build
