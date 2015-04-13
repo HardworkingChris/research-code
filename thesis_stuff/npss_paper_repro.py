@@ -18,10 +18,10 @@ dflock = mp.Lock()
 FREQUENCY_FILE = "calibratedfreq.pkl"
 NPSS_FILE = "npssresults.pkl"
 
-def load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
+def load_or_calibrate(nrndef, Nin, weight, sync, fout,
                       Vth=15*mV, tau=10*ms):
     nrndeftuple = tuple(nrndef.items())
-    key = (nrndeftuple, Nin, weight, tuple(syncconf), fout, Vth, tau)
+    key = (nrndeftuple, Nin, weight, tuple(sync), fout, Vth, tau)
     fflock.acquire()
     try:
         with open(FREQUENCY_FILE) as freqfile:
@@ -33,7 +33,7 @@ def load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
     fin = filedata.get(key, None)
     if fin is None:
         print("Calibrating {} {} {}".format(Nin, weight, fout))
-        fin = sl.tools.calibrate_frequencies(nrndef, Nin, weight, syncconf,
+        fin = sl.tools.calibrate_frequencies(nrndef, Nin, weight, sync,
                                              fout, Vth=15*mV, tau=10*ms)
         fflock.acquire()
         try:
@@ -69,9 +69,9 @@ def runsim(Nin, weight, fout, sync):
     defaultclock.reinit()
     duration = 5*second
     lifeq = "dV/dt = -V/(10*ms) : volt"
-    nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV"}
-              # "refractory": 2*ms}
-    fin = load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
+    nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV",
+              "refractory": 2*ms}
+    fin = load_or_calibrate(nrndef, Nin, weight, sync, fout,
                             Vth=15*mV, tau=10*ms)
     # print("Calibrated frequencies:")
     # print(", ".join(str(f) for f in fin))
@@ -82,7 +82,7 @@ def runsim(Nin, weight, fout, sync):
     neurons = NeuronGroup(Nneurons, **nrndef)
     for idx in range(Nneurons):
         fin_i = fin[idx]
-        sync_i, sigma_i = syncconf[idx]
+        sync_i, sigma_i = sync[idx]
         inputgrp = sl.tools.fast_synchronous_input_gen(Nin, fin_i,
                                                        sync_i, sigma_i,
                                                        duration)
@@ -111,7 +111,7 @@ def runsim(Nin, weight, fout, sync):
         mnpss.append(np.mean(npss))
         allnpss.append(npss)
     nrndeftuple = tuple(nrndef.items())
-    key = (nrndeftuple, Nin, weight, tuple(syncconf), fout, 15*mV, 10*ms)
+    key = (nrndeftuple, Nin, weight, tuple(sync), fout, 15*mV, 10*ms)
     save_data(key, allnpss)
     imshape = (len(sigma), len(Sin))
     imextent = (0, 1, 0, 4.0)
