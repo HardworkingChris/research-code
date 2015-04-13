@@ -102,8 +102,8 @@ def runsim(Nin, weight, fout, sync):
     for idx in range(Nneurons):
         vmon = voltagemon[idx]
         smon = spikemon[idx]
-        print("Desired firing rate: {}".format(fout))
-        print("Actual firing rate:  {}".format(len(smon)/duration))
+        # print("Desired firing rate: {}".format(fout))
+        # print("Actual firing rate:  {}".format(len(smon)/duration))
         if len(smon) > 0:
             npss = sl.tools.npss(vmon, smon, 0*mV, 15*mV, 10*ms, 2*ms)
         else:
