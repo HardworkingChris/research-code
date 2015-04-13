@@ -67,7 +67,7 @@ def runsim(Nin, weight, fout, sync):
     clear(True)
     gc.collect()
     defaultclock.reinit()
-    duration = 1*second
+    duration = 5*second
     lifeq = "dV/dt = -V/(10*ms) : volt"
     nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV"}
               # "refractory": 2*ms}
@@ -127,7 +127,9 @@ def runsim(Nin, weight, fout, sync):
     plt.savefig(filename+".pdf")
     plt.savefig(filename+".png")
     print("{} saved".format(filename))
-    pickle.dump((voltagemon, spikemon), filename+"pkl")
+    voltages = voltagemon.values
+    spiketrains = spikemon.spiketimes.values()
+    pickle.dump((voltages, spiketrains), open(filename+".pkl", 'w'))
     return voltagemon, spikemon
 
 
@@ -142,11 +144,12 @@ configurations = []
 for n, w, f in zip(Nin, weight, fout):
     configurations.append({"Nin": n, "weight": w, "fout": f, "sync": syncconf})
 
-pool = mp.Pool()
-print("Building pool")
-mppool = [pool.apply_async(runsim, kwds=c) for c in configurations]
-print("Getting results")
-results = [res.get() for res in mppool]
+# pool = mp.Pool()
+# print("Building pool")
+# mppool = [pool.apply_async(runsim, kwds=c) for c in configurations]
+# print("Getting results")
+# results = [res.get() for res in mppool]
 
-# for conf in configurations:
-#     runsim(**conf)
+for conf in configurations:
+    runsim(**conf)
+    break
