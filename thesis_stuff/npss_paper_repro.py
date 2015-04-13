@@ -144,12 +144,11 @@ configurations = []
 for n, w, f in zip(Nin, weight, fout):
     configurations.append({"Nin": n, "weight": w, "fout": f, "sync": syncconf})
 
-# pool = mp.Pool()
-# print("Building pool")
-# mppool = [pool.apply_async(runsim, kwds=c) for c in configurations]
-# print("Getting results")
-# results = [res.get() for res in mppool]
+pool = mp.Pool()
+print("Building pool")
+mppool = [pool.apply_async(runsim, kwds=c) for c in configurations]
+print("Getting results")
+results = [res.get() for res in mppool]
 
-for conf in configurations:
-    runsim(**conf)
-    break
+# for conf in configurations:
+#     runsim(**conf)
