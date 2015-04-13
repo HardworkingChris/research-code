@@ -20,7 +20,8 @@ NPSS_FILE = "npssresults.pkl"
 
 def load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
                       Vth=15*mV, tau=10*ms):
-    key = (nrndef, Nin, weight, syncconf, fout, Vth, tau)
+    nrndeftuple = tuple(nrndef.items())
+    key = (nrndeftuple, Nin, weight, tuple(syncconf), fout, Vth, tau)
     fflock.acquire()
     try:
         with open(FREQUENCY_FILE) as freqfile:
@@ -50,12 +51,15 @@ def load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
 def save_data(key, npss):
     dflock.acquire()
     try:
-        with open(NPSS_FILE, 'rw') as npssfile:
+        with open(NPSS_FILE, 'r') as npssfile:
             filedata = pickle.load(npssfile)
+    except IOError:
+        filedata = {}
+    finally:
+        with open(NPSS_FILE, 'w') as npssfile:
             filedata[key] = npss  # don't care if overwriting existing item
             pickle.dump(filedata, npssfile)
             print("Saved npss data for: {}".format(key))
-    finally:
         dflock.release()
 
 def runsim(Nin, weight, fout, sync):
@@ -63,7 +67,7 @@ def runsim(Nin, weight, fout, sync):
     clear(True)
     gc.collect()
     defaultclock.reinit()
-    duration = 1*second
+    duration = 2*second
     lifeq = "dV/dt = -V/(10*ms) : volt"
     nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV"}
               # "refractory": 2*ms}
@@ -106,7 +110,8 @@ def runsim(Nin, weight, fout, sync):
             npss = 0
         mnpss.append(np.mean(npss))
         allnpss.append(npss)
-    key = (nrndef, Nin, weight, syncconf, fout, 15*mV, 10*ms)
+    nrndeftuple = tuple(nrndef.items())
+    key = (nrndeftuple, Nin, weight, tuple(syncconf), fout, 15*mV, 10*ms)
     save_data(key, allnpss)
     imshape = (len(sigma), len(Sin))
     imextent = (0, 1, 0, 4.0)
@@ -127,8 +132,8 @@ def runsim(Nin, weight, fout, sync):
 Nin = [100, 50, 60, 60, 200, 60]
 weight = [0.1*mV, 0.2*mV, 0.3*mV, 0.5*mV, 0.1*mV, 0.5*mV]
 fout = [5*Hz, 100*Hz, 10*Hz, 70*Hz, 10*Hz, 100*Hz]
-Sin = np.arange(0, 1.01, 0.2)
-sigma = np.arange(0, 4.1, 1.0)*ms
+Sin = np.arange(0, 1.01, 0.1)
+sigma = np.arange(0, 4.1, 0.5)*ms
 syncconf = [(s, j) for s, j in itt.product(Sin, sigma)]
 
 configurations = []
