@@ -67,7 +67,7 @@ def runsim(Nin, weight, fout, sync):
     clear(True)
     gc.collect()
     defaultclock.reinit()
-    duration = 5*second
+    duration = 1*second
     lifeq = "dV/dt = -V/(10*ms) : volt"
     nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV"}
               # "refractory": 2*ms}
@@ -118,7 +118,7 @@ def runsim(Nin, weight, fout, sync):
     mnpss = np.reshape(mnpss, imshape, order="F")
     plt.figure()
     plt.imshow(mnpss, aspect="auto", origin="lower", extent=imextent,
-               vmin=0, vmax=1)
+               interpolation="none", vmin=0, vmax=1)
     cbar = plt.colorbar()
     cbar.set_label("$\overline{M}$")
     plt.xlabel("$S_{in}$")
@@ -127,6 +127,8 @@ def runsim(Nin, weight, fout, sync):
     plt.savefig(filename+".pdf")
     plt.savefig(filename+".png")
     print("{} saved".format(filename))
+    pickle.dump((voltagemon, spikemon), filename+"pkl")
+    return voltagemon, spikemon
 
 
 Nin = [100, 50, 60, 60, 200, 60]
