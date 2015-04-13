@@ -59,7 +59,7 @@ def save_data(key, npss):
         with open(NPSS_FILE, 'w') as npssfile:
             filedata[key] = npss  # don't care if overwriting existing item
             pickle.dump(filedata, npssfile)
-            print("Saved npss data for: {} {} {}".format(Nin, weight, fout))
+            print("Saved NPSS data for: {} {} {}".format(key[1], key[2], key[4]))
         dflock.release()
 
 def runsim(Nin, weight, fout, sync):
