@@ -129,7 +129,8 @@ def runsim(Nin, weight, fout, sync):
     print("{} saved".format(filename))
     voltages = voltagemon.values
     spiketrains = spikemon.spiketimes.values()
-    pickle.dump((voltages, spiketrains), open(filename+".pkl", 'w'))
+    pickle.dump({"voltages": voltages, "spiketrains": spiketrains},
+                 open(filename+".pkl", 'w'))
     return voltagemon, spikemon
 
 
