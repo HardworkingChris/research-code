@@ -7,10 +7,51 @@ from brian import (Network, NeuronGroup, SpikeMonitor, StateMonitor,
 import gc
 import matplotlib.pyplot as plt
 import numpy as np
-# import multiprocessing as mp
+import multiprocessing as mp
 import itertools as itt
 import spikerlib as sl
+import pickle
 
+
+fflock = mp.Lock()
+dflock = mp.Lock()
+FREQUENCY_FILE = "calibratedfreq.pkl"
+NPSS_FILE = "npssresults.pkl"
+
+def load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
+                      Vth=15*mV, tau=10*ms):
+    key = (nrndef, Nin, weight, syncconf, fout, Vth, tau)
+    fflock.acquire()
+    try:
+        with open(FREQUENCY_FILE) as freqfile:
+            filedata = pickle.load(freqfile)
+    finally:
+        fflock.release()
+    fin = filedata.get(key, None)
+    if fin is None:
+        print("Calibrating {} {} {}".format(Nin, weight, fout))
+        fin = sl.tools.calibrate_frequencies(nrndef, Nin, weight, syncconf,
+                                             fout, Vth=15*mV, tau=10*ms)
+        fflock.acquire()
+        try:
+            with open(FREQUENCY_FILE, 'rw') as freqfile:
+                filedata = pickle.load(freqfile)
+                filedata[key] = fin
+                pickle.dump(filedata, freqfile)
+        finally:
+            fflock.release()
+    return fin
+
+def save_data(key, npss):
+    dflock.acquire()
+    try:
+        with open(NPSS_FILE, 'rw') as npssfile:
+            filedata = pickle.load(npssfile)
+            filedata[key] = npss  # don't care if overwriting existing item
+            pickle.dump(filedata, npssfile)
+            print("Saved npss data for: {}".format(key))
+    finally:
+        dflock.release()
 
 def runsim(Nin, weight, fout, sync):
     sim = Network()
@@ -21,11 +62,10 @@ def runsim(Nin, weight, fout, sync):
     lifeq = "dV/dt = -V/(10*ms) : volt"
     nrndef = {"model": lifeq, "threshold": "V>=15*mV", "reset": "V=0*mV"}
               # "refractory": 2*ms}
-    print("Calibrating {} {} {}".format(Nin, weight, fout))
-    fin = sl.tools.calibrate_frequencies(nrndef, Nin, weight, syncconf, fout,
-                                         Vth=15*mV, tau=10*ms)
-    print("Calibrated frequencies:")
-    print(", ".join(str(f) for f in fin))
+    fin = load_or_calibrate(nrndef, Nin, weight, syncconf, fout,
+                            Vth=15*mV, tau=10*ms)
+    # print("Calibrated frequencies:")
+    # print(", ".join(str(f) for f in fin))
     inputgroups = []
     connections = []
     neurons = []
@@ -49,6 +89,7 @@ def runsim(Nin, weight, fout, sync):
     print("Running {} {} {}".format(Nin, weight, fout))
     sim.run(duration, report="stdout")
     mnpss = []
+    allnpss = []
     for idx in range(Nneurons):
         vmon = voltagemon[idx]
         smon = spikemon[idx]
@@ -59,6 +100,9 @@ def runsim(Nin, weight, fout, sync):
         else:
             npss = 0
         mnpss.append(np.mean(npss))
+        allnpss.append(npss)
+    key = (nrndef, Nin, weight, syncconf, fout, 15*mV, 10*ms)
+    save_data(key, allnpss)
     imshape = (len(sigma), len(Sin))
     imextent = (0, 1, 0, 4.0)
     mnpss = np.reshape(mnpss, imshape, order="F")
@@ -86,14 +130,11 @@ configurations = []
 for n, w, f in zip(Nin, weight, fout):
     configurations.append({"Nin": n, "weight": w, "fout": f, "sync": syncconf})
 
-# pool = mp.Pool()
-# print("Building pool")
-# mppool = [pool.apply_async(runsim, kwds=c) for c in configurations]
-# print("Getting results")
-# results = [res.get() for res in mppool]
+pool = mp.Pool()
+print("Building pool")
+mppool = [pool.apply_async(runsim, kwds=c) for c in configurations]
+print("Getting results")
+results = [res.get() for res in mppool]
 
-for conf in configurations:
-    runsim(**conf)
-
-# TODO: Save input frequencies from calibration so simulations can be rerun.
-# TODO: Save data so plots can be redrawn.
+# for conf in configurations:
+#     runsim(**conf)
