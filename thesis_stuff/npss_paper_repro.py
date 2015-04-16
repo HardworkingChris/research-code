@@ -15,8 +15,8 @@ import pickle
 
 fflock = mp.Lock()
 dflock = mp.Lock()
-FREQUENCY_FILE = "calibratedfreq.pkl"
-NPSS_FILE = "npssresults.pkl"
+FREQUENCY_FILE = "pkl/calibratedfreq.pkl"
+NPSS_FILE = "pkl/npssresults.pkl"
 
 def load_or_calibrate(nrndef, Nin, weight, sync, fout,
                       Vth=15*mV, tau=10*ms):
