@@ -136,7 +136,7 @@ def runsim(Nin, weight, fout, sync):
 
 Nin = [100, 50, 60, 60, 200, 60]
 weight = [0.1*mV, 0.2*mV, 0.3*mV, 0.5*mV, 0.1*mV, 0.5*mV]
-fout = [5*Hz, 100*Hz, 10*Hz, 70*Hz, 10*Hz, 100*Hz]
+fout = [5*Hz, 100*Hz, 10*Hz, 70*Hz, 10*Hz, 400*Hz]
 Sin = np.arange(0, 1.01, 0.1)
 sigma = np.arange(0, 4.1, 0.5)*ms
 syncconf = [(s, j) for s, j in itt.product(Sin, sigma)]
