@@ -1,28 +1,28 @@
 [submodule "ou_lif"]
 	path = ou_lif
-	url = git@bitbucket.org:achilleas-k/ou-lif.git
+	url = git@github.com:achilleas-k/ou-lif-brian.git
 	branch = master
 [submodule "slope_vs_dist"]
 	path = slope_vs_dist
-	url = git@bitbucket.org:achilleas-k/slope-vs-dist.git
+	url = git@github.com:achilleas-k/slope-vs-dist-brian.git
 	branch = master
 [submodule "spikerlib"]
 	path = spikerlib
-	url = git@bitbucket.org:achilleas-k/spikerlib
+	url = git@github.com:achilleas-k/spikerlib
 	branch = master
 [submodule "connectivity"]
 	path = connectivity
-	url = git@bitbucket.org:achilleas-k/connectivity
+	url = git@github.com:achilleas-k/connectivity
 	branch = master
 [submodule "delay_learning"]
 	path = delay_learning
-	url = git@bitbucket.org:achilleas-k/delay-learning-brian
+	url = git@github.com:achilleas-k/delay-learning-brian
 	branch = master
 [submodule "networks"]
 	path = networks
-	url = git@bitbucket.org:achilleas-k/networks-brian
+	url = git@github.com:achilleas-k/networks-brian
 	branch = master
 [submodule "npss_playground"]
 	path = npss_playground
-	url = git@bitbucket.org:achilleas-k/npss-playground.git
+	url = git@github.com:achilleas-k/npss-playground.git
 	branch = master
